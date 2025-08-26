@@ -22,6 +22,7 @@ from PySide6.QtWidgets import (
 )
 
 from ..storage import Storage
+from ..priority_service import color_for
 
 
 @dataclass
@@ -31,7 +32,7 @@ class Posting:
     date: str = ""
     work: str = ""
     chapter: str = ""
-    priority: int = 0
+    priority: int = 1
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -42,7 +43,7 @@ class Posting:
             date=data.get("date", ""),
             work=data.get("work", ""),
             chapter=data.get("chapter", ""),
-            priority=int(data.get("priority", 0)),
+            priority=int(data.get("priority", 1)),
         )
 
 class PostingsPanel(QWidget):
@@ -70,12 +71,7 @@ class PostingsPanel(QWidget):
         self.table.setEditTriggers(trigger)
 
     def _priority_color(self, p: int) -> str:
-        return {
-            3: "#ff5555",  # high
-            2: "#ffaa00",  # medium
-            1: "#55aa55",  # low
-            0: "#888888",  # default
-        }.get(p, "#888888")
+        return color_for(p)
 
     def _set_text(self, row: int, col: int, text: str):
         item = self.table.item(row, col)
@@ -100,7 +96,7 @@ class PostingsPanel(QWidget):
         if col == 3:
             item = self.table.item(row, col)
             current = item.data(Qt.UserRole) if item else 0
-            p, ok = QInputDialog.getInt(self, "Приоритет", "Приоритет (0-3)", int(current), 0, 3)
+            p, ok = QInputDialog.getInt(self, "Приоритет", "Приоритет (1-4)", int(current), 1, 4)
             if ok:
                 self._set_priority(row, p)
         else:

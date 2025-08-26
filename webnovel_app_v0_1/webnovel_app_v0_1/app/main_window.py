@@ -1,13 +1,15 @@
 from pathlib import Path
 
 from PySide6.QtCore import Qt, QTimer, QSettings
-from PySide6.QtGui import QAction
+from PySide6.QtGui import QAction, QActionGroup
 from PySide6.QtWidgets import (
     QMainWindow,
     QDockWidget,
     QLabel,
     QStatusBar,
     QFileDialog,
+    QWidget,
+    QHBoxLayout,
 )
 
 from .styles import base_stylesheet, apply_glass_effect
@@ -18,6 +20,7 @@ from .panels.top_month_panel import TopMonthPanel
 from .panels.postings_panel import PostingsPanel
 from .panels.stats_panel import StatsPanel
 from .storage import Storage
+from .priority_service import PriorityFilter, PRIORITY_COLORS
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -129,11 +132,37 @@ class MainWindow(QMainWindow):
         act_save_dir.triggered.connect(self.pick_save_dir)
         tb.addAction(act_save_dir)
 
+        tb.addSeparator()
+
+        group = QActionGroup(self)
+        act_all = QAction("1-4", self, checkable=True)
+        act_all.setChecked(True)
+        act_all.triggered.connect(lambda: self.set_priority_filter(PriorityFilter.OneToFour))
+        group.addAction(act_all)
+        tb.addAction(act_all)
+
+        act_low = QAction("1-2", self, checkable=True)
+        act_low.triggered.connect(lambda: self.set_priority_filter(PriorityFilter.OneToTwo))
+        group.addAction(act_low)
+        tb.addAction(act_low)
+
+        legend = QWidget()
+        lay = QHBoxLayout(legend)
+        lay.setContentsMargins(4, 0, 4, 0)
+        for p, color in PRIORITY_COLORS.items():
+            lbl = QLabel(str(int(p)))
+            lbl.setStyleSheet(f"background:{color}; padding:2px; border-radius:3px; color:#000;")
+            lay.addWidget(lbl)
+        tb.addWidget(legend)
+
     def pick_save_dir(self):
         d = QFileDialog.getExistingDirectory(self, "Выбрать папку сохранения")
         if d:
             self.prefs["save_dir"] = d
             self.settings.setValue("save_dir", d)
+
+    def set_priority_filter(self, filt: PriorityFilter):
+        self.central.set_priority_filter(filt)
 
     def open_settings(self):
         dlg = SettingsDialog(self, self.prefs)
