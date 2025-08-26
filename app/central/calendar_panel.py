@@ -4,7 +4,7 @@ from pathlib import Path
 from PySide6.QtCore import Qt, QDate
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QComboBox, QLabel, QTableWidget,
-    QSpinBox, QFrame, QInputDialog
+    QSpinBox, QFrame, QInputDialog, QMenu
 )
 
 from ..storage import Storage
@@ -24,6 +24,7 @@ class Work:
     done: int = 0
     priority: int = 1
     is_adult: bool = False
+    comment: str = ""
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -36,6 +37,7 @@ class Work:
             done=int(data.get("done", 0)),
             priority=int(data.get("priority", 1)),
             is_adult=bool(data.get("is_adult", False)),
+            comment=data.get("comment", ""),
         )
 
 
@@ -52,6 +54,10 @@ class WorkLabel(QLabel):
         if self.work.is_adult:
             txt += " 18+"
         self.setText(txt)
+        tip = f"Приоритет: {self.work.priority}"
+        if self.work.comment:
+            tip += f"\n{self.work.comment}"
+        self.setToolTip(tip)
 
     def mouseDoubleClickEvent(self, event):
         self.panel.edit_work(self.day, self.work)
@@ -137,6 +143,8 @@ class CalendarPanel(QWidget):
         lay.setSpacing(2)
         day_lbl = QLabel(str(day))
         lay.addWidget(day_lbl)
+        w.setContextMenuPolicy(Qt.CustomContextMenu)
+        w.customContextMenuRequested.connect(lambda pos, d=day, wid=w: self.show_day_menu(d, wid, pos))
         works = self.month_data.get(day, [])
         works = filter_tasks(works, self.priority_filter)
         for work in sort_tasks(works):
@@ -158,6 +166,17 @@ class CalendarPanel(QWidget):
             self.refresh_day(day)
 
     def edit_work(self, day: int, work: Work):
+        name, ok = QInputDialog.getText(self, "Имя", "Имя", text=work.name)
+        if ok and name:
+            work.name = name
+        adult, ok = QInputDialog.getItem(
+            self, "Категория", "Категория", ["0+", "18+"], 1 if work.is_adult else 0
+        )
+        if ok:
+            work.is_adult = adult == "18+"
+        comment, ok = QInputDialog.getText(self, "Комментарий", "Комментарий", text=work.comment)
+        if ok:
+            work.comment = comment
         plan, ok = QInputDialog.getInt(self, "Plan", "Plan", work.plan, 0, 9999)
         if ok:
             work.plan = plan
@@ -169,6 +188,46 @@ class CalendarPanel(QWidget):
             override_priority(work, p)
         self.save_month()
         self.refresh_day(day)
+
+    def add_work(self, day: int):
+        name, ok = QInputDialog.getText(self, "Имя", "Имя")
+        if not ok or not name:
+            return
+        adult, ok = QInputDialog.getItem(
+            self, "Категория", "Категория", ["0+", "18+"], 0
+        )
+        if not ok:
+            return
+        comment, ok = QInputDialog.getText(self, "Комментарий", "Комментарий")
+        if not ok:
+            return
+        plan, ok = QInputDialog.getInt(self, "Plan", "Plan", 0, 0, 9999)
+        if not ok:
+            return
+        done, ok = QInputDialog.getInt(self, "Done", "Done", 0, 0, 9999)
+        if not ok:
+            return
+        priority, ok = QInputDialog.getInt(self, "Приоритет", "Приоритет (1-4)", 1, 1, 4)
+        if not ok:
+            return
+        w = Work(
+            name=name,
+            plan=plan,
+            done=done,
+            priority=priority,
+            is_adult=(adult == "18+"),
+            comment=comment,
+        )
+        self.month_data.setdefault(day, []).append(w)
+        self.save_month()
+        self.refresh_day(day)
+
+    def show_day_menu(self, day: int, widget: QWidget, pos):
+        menu = QMenu(widget)
+        act_add = menu.addAction("Добавить работу")
+        action = menu.exec(widget.mapToGlobal(pos))
+        if action == act_add:
+            self.add_work(day)
 
     def refresh_day(self, day: int):
         pos = self._day_pos.get(day)
