@@ -61,10 +61,10 @@ def base_stylesheet(accent: str = "#00E5FF", neon_size: int = 8, neon_intensity:
         border: 1px solid #2A2D2E;
         border-radius: 10px;
     }}
-    QDockWidget::title {
+    QDockWidget::title {{
         padding: 2px;
         margin: 0;
-    }
+    }}
 
     QHeaderView::section {{
         background-color: #2A2D2E;
