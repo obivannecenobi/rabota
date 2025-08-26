@@ -2,10 +2,12 @@ using System;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.IO;
+using System.Linq;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Windows.Input;
 using System.Windows.Media;
+using CalendarApp.Services;
 
 namespace CalendarApp.ViewModels
 {
@@ -14,7 +16,23 @@ namespace CalendarApp.ViewModels
         public ObservableCollection<DayTask> Days { get; set; } = new ObservableCollection<DayTask>();
         public ObservableCollection<int> Years { get; } = new ObservableCollection<int>();
         public ObservableCollection<int> Months { get; } = new ObservableCollection<int>();
-        public ObservableCollection<Priority> Priorities { get; } = new ObservableCollection<Priority> { Priority.Low, Priority.Medium, Priority.High };
+        public ObservableCollection<PriorityLevel> Priorities { get; } = new ObservableCollection<PriorityLevel>(PriorityService.GetPriorities());
+        public ObservableCollection<PriorityFilter> Filters { get; } = new ObservableCollection<PriorityFilter> { PriorityFilter.OneToFour, PriorityFilter.OneToTwo };
+
+        private PriorityFilter selectedFilter = PriorityFilter.OneToFour;
+        public PriorityFilter SelectedFilter
+        {
+            get => selectedFilter;
+            set
+            {
+                if (selectedFilter != value)
+                {
+                    selectedFilter = value;
+                    OnPropertyChanged(nameof(SelectedFilter));
+                    ApplySortAndFilter();
+                }
+            }
+        }
 
         private int selectedYear;
         public int SelectedYear
@@ -66,6 +84,7 @@ namespace CalendarApp.ViewModels
 
             GenerateCalendar();
             LoadData();
+            ApplySortAndFilter();
         }
 
         private string DataFilePath => Path.Combine(AppDomain.CurrentDomain.BaseDirectory, $"calendar_{SelectedYear}_{SelectedMonth}.json");
@@ -98,6 +117,8 @@ namespace CalendarApp.ViewModels
                     foreach (var item in items) Days.Add(item);
                 }
             }
+
+            ApplySortAndFilter();
         }
 
         public event PropertyChangedEventHandler PropertyChanged;
@@ -105,6 +126,11 @@ namespace CalendarApp.ViewModels
 
         public class DayTask : INotifyPropertyChanged
         {
+            public DayTask()
+            {
+                Priority = PriorityLevel.One;
+            }
+
             public DateTime Date { get; set; }
 
             private string plan;
@@ -121,37 +147,26 @@ namespace CalendarApp.ViewModels
                 set { done = value; OnPropertyChanged(nameof(Done)); }
             }
 
-            private Priority priority;
-            public Priority Priority
+            private PriorityLevel priority;
+            public PriorityLevel Priority
             {
                 get => priority;
                 set { priority = value; OnPropertyChanged(nameof(Priority)); OnPropertyChanged(nameof(PriorityBrush)); }
             }
 
             [JsonIgnore]
-            public Brush PriorityBrush
-            {
-                get
-                {
-                    return Priority switch
-                    {
-                        Priority.Low => Brushes.LightGreen,
-                        Priority.Medium => Brushes.Khaki,
-                        Priority.High => Brushes.Salmon,
-                        _ => Brushes.White
-                    };
-                }
-            }
+            public Brush PriorityBrush => PriorityService.GetBrush(Priority);
 
             public event PropertyChangedEventHandler PropertyChanged;
             private void OnPropertyChanged(string name) => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
         }
 
-        public enum Priority
+        private void ApplySortAndFilter()
         {
-            Low,
-            Medium,
-            High
+            var sorted = PriorityService.Sort(Days);
+            var filtered = PriorityService.Filter(sorted, SelectedFilter).ToList();
+            Days.Clear();
+            foreach (var item in filtered) Days.Add(item);
         }
 
         private class RelayCommand : ICommand
