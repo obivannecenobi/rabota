@@ -8,7 +8,6 @@ from PySide6.QtWidgets import (
     QLabel,
     QStatusBar,
     QFileDialog,
-    QTableWidgetItem,
 )
 
 from .styles import base_stylesheet, apply_glass_effect
@@ -66,7 +65,7 @@ class MainWindow(QMainWindow):
         self.right_dock = QDockWidget("Постинг отложки по дням", self)
         self.right_dock.setAllowedAreas(Qt.RightDockWidgetArea)
         self.right_dock.setFeatures(QDockWidget.DockWidgetClosable | QDockWidget.DockWidgetMovable)
-        self.right_panel = PostingsPanel(self.right_dock)
+        self.right_panel = PostingsPanel(self.right_dock, storage=self.storage)
         self.right_dock.setWidget(self.right_panel)
         self.addDockWidget(Qt.RightDockWidgetArea, self.right_dock)
 
@@ -179,7 +178,7 @@ class MainWindow(QMainWindow):
         m = self.central.month.currentIndex() + 1
         self.central.save_month()
         self.left_panel.save_month(y, m)
-        self.storage.save_json(f"{y}/postings_{m:02d}.json", self._dump_table(self.right_panel.table))
+        self.right_panel.save_month(y, m)
         self.storage.save_json(
             f"{y}/stats_{m:02d}.json",
             {"charts_visible": self.stats_panel.charts_frame.isVisible()},
@@ -188,43 +187,12 @@ class MainWindow(QMainWindow):
         super().closeEvent(e)
 
     # ------------------------------------------------------------------
-    # helpers for persistence
-    def _dump_table(self, table):
-        data = []
-        rows = table.rowCount()
-        cols = table.columnCount()
-        for r in range(rows):
-            row = []
-            empty = True
-            for c in range(cols):
-                item = table.item(r, c)
-                text = item.text() if item else ""
-                row.append(text)
-                if text:
-                    empty = False
-            if not empty:
-                data.append(row)
-        return data
-
-    def _restore_table(self, table, data):
-        rows = min(len(data), table.rowCount())
-        cols = table.columnCount()
-        for r in range(rows):
-            for c in range(cols):
-                text = data[r][c] if c < len(data[r]) else ""
-                item = table.item(r, c)
-                if not item:
-                    item = QTableWidgetItem()
-                    table.setItem(r, c, item)
-                item.setText(text)
-
     def _load_panels(self):
         y = self.central.year.value()
         m = self.central.month.currentIndex() + 1
         self.left_panel.load_month(self.central, y, m)
-        postings = self.storage.load_json(f"{y}/postings_{m:02d}.json", [])
+        self.right_panel.load_month(y, m)
         stats = self.storage.load_json(f"{y}/stats_{m:02d}.json", {})
-        self._restore_table(self.right_panel.table, postings)
         vis = bool(stats.get("charts_visible"))
         self.stats_panel.charts_frame.setVisible(vis)
         self.stats_panel.toggle_btn.setText("Скрыть графики" if vis else "Показать графики")
