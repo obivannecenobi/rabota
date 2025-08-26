@@ -20,10 +20,11 @@ from PySide6.QtWidgets import (
     QTableWidget,
     QTableWidgetItem,
     QInputDialog,
+    QMenu,
 )
 
 from ..storage import Storage
-from ..priority_service import color_for
+from ..priority_service import color_for, PriorityLevel, PRIORITY_DESCRIPTIONS
 
 
 @dataclass
@@ -63,6 +64,8 @@ class PostingsPanel(QWidget):
         lay.addWidget(self.table)
 
         self.table.cellDoubleClicked.connect(self._on_cell_double_clicked)
+        self.table.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.table.customContextMenuRequested.connect(self._on_table_menu)
 
     # ------------------------------------------------------------------
     # helpers / UI
@@ -90,6 +93,9 @@ class PostingsPanel(QWidget):
         item.setText("●" if p else "")
         item.setTextAlignment(Qt.AlignCenter)
         item.setForeground(QColor(self._priority_color(p)))
+        desc = PRIORITY_DESCRIPTIONS.get(PriorityLevel(p), "")
+        if desc:
+            item.setToolTip(f"{p} — {desc}")
 
     def _on_cell_double_clicked(self, row: int, col: int):
         if not self.edit_mode:
@@ -102,6 +108,20 @@ class PostingsPanel(QWidget):
                 self._set_priority(row, p)
         else:
             self.table.editItem(self.table.item(row, col))
+
+    def _on_table_menu(self, pos):
+        idx = self.table.indexAt(pos)
+        if not idx.isValid() or idx.column() != 3:
+            return
+        row = idx.row()
+        menu = QMenu(self.table)
+        for lvl in PriorityLevel:
+            act = menu.addAction(f"{int(lvl)}")
+            act.setData(int(lvl))
+        chosen = menu.exec(self.table.mapToGlobal(pos))
+        if chosen:
+            p = int(chosen.data())
+            self._set_priority(row, p)
 
     # ------------------------------------------------------------------
     # persistence
