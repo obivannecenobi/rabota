@@ -20,7 +20,7 @@ from .panels.top_month_panel import TopMonthPanel
 from .panels.postings_panel import PostingsPanel
 from .panels.stats_panel import StatsPanel
 from .storage import Storage
-from .priority_service import PriorityFilter, PRIORITY_COLORS
+from .priority_service import PriorityFilter, PRIORITY_COLORS, PRIORITY_DESCRIPTIONS
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -167,10 +167,14 @@ class MainWindow(QMainWindow):
         legend = QWidget()
         lay = QHBoxLayout(legend)
         lay.setContentsMargins(4, 0, 4, 0)
+        tip_lines = []
         for p, color in PRIORITY_COLORS.items():
             lbl = QLabel(str(int(p)))
             lbl.setStyleSheet(f"background:{color}; padding:2px; border-radius:3px; color:#000;")
+            lbl.setToolTip(PRIORITY_DESCRIPTIONS.get(p, ""))
             lay.addWidget(lbl)
+            tip_lines.append(f"{int(p)} — {PRIORITY_DESCRIPTIONS.get(p, '')}")
+        legend.setToolTip("\n".join(tip_lines))
         tb.addWidget(legend)
 
     def _build_menu(self):

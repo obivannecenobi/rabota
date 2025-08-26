@@ -14,6 +14,8 @@ from ..priority_service import (
     sort_tasks,
     filter_tasks,
     override_priority,
+    PriorityLevel,
+    PRIORITY_DESCRIPTIONS,
 )
 
 
@@ -48,16 +50,35 @@ class WorkLabel(QLabel):
         self.day = day
         self.work = work
         self._update_text()
+        self.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.customContextMenuRequested.connect(self._show_menu)
 
     def _update_text(self):
         txt = f"{self.work.name} {self.work.plan}/{self.work.done}"
         if self.work.is_adult:
             txt += " 18+"
         self.setText(txt)
-        tip = f"Приоритет: {self.work.priority}"
+        desc = PRIORITY_DESCRIPTIONS.get(PriorityLevel(self.work.priority), "")
+        tip = f"Приоритет: {self.work.priority} — {desc}" if desc else f"Приоритет: {self.work.priority}"
         if self.work.comment:
             tip += f"\n{self.work.comment}"
         self.setToolTip(tip)
+
+    def _show_menu(self, pos):
+        menu = QMenu(self)
+        actions = []
+        for lvl in PriorityLevel:
+            act = menu.addAction(f"{int(lvl)}")
+            act.setData(int(lvl))
+            actions.append(act)
+        chosen = menu.exec(self.mapToGlobal(pos))
+        if chosen:
+            p = int(chosen.data())
+            if p != self.work.priority:
+                override_priority(self.work, p)
+                self.panel.save_month()
+                self.panel.refresh_day(self.day)
+                self._update_text()
 
     def mouseDoubleClickEvent(self, event):
         self.panel.edit_work(self.day, self.work)
@@ -152,6 +173,9 @@ class CalendarPanel(QWidget):
             mark = QFrame()
             mark.setFixedSize(8, 8)
             mark.setStyleSheet(f"background:{color_for(work.priority)}; border-radius:4px;")
+            desc = PRIORITY_DESCRIPTIONS.get(PriorityLevel(work.priority), "")
+            if desc:
+                mark.setToolTip(f"{work.priority} — {desc}")
             hl.addWidget(mark)
             lbl = WorkLabel(self, day, work)
             hl.addWidget(lbl)

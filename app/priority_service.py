@@ -15,6 +15,14 @@ PRIORITY_COLORS = {
     PriorityLevel.Four: "#CD5C5C",  # IndianRed
 }
 
+# Human readable descriptions for tooltips/legends
+PRIORITY_DESCRIPTIONS = {
+    PriorityLevel.One: "Низкий",
+    PriorityLevel.Two: "Средний",
+    PriorityLevel.Three: "Высокий",
+    PriorityLevel.Four: "Срочный",
+}
+
 class PriorityFilter(IntEnum):
     OneToFour = 0
     OneToTwo = 1
