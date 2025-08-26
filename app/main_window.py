@@ -7,7 +7,6 @@ from PySide6.QtWidgets import (
     QDockWidget,
     QLabel,
     QStatusBar,
-    QFileDialog,
     QWidget,
     QHBoxLayout,
     QComboBox,
@@ -137,10 +136,6 @@ class MainWindow(QMainWindow):
         act_settings.triggered.connect(self.open_settings)
         tb.addAction(act_settings)
 
-        act_save_dir = QAction("Папка сохранения", self)
-        act_save_dir.triggered.connect(self.pick_save_dir)
-        tb.addAction(act_save_dir)
-
         tb.addSeparator()
 
         group = QActionGroup(self)
@@ -198,12 +193,6 @@ class MainWindow(QMainWindow):
             lambda vis: self.act_show_bottom.setEnabled(not vis)
         )
         self.act_show_bottom.setEnabled(not self.bottom_dock.isVisible())
-
-    def pick_save_dir(self):
-        d = QFileDialog.getExistingDirectory(self, "Выбрать папку сохранения")
-        if d:
-            self.prefs["save_dir"] = d
-            self.settings.setValue("save_dir", d)
 
     def set_priority_filter(self, filt: PriorityFilter):
         self.prefs["priority_filter"] = int(filt)
