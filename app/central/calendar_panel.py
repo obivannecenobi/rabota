@@ -17,6 +17,11 @@ from ..priority_service import (
     PriorityLevel,
     PRIORITY_DESCRIPTIONS,
 )
+from ..styles import (
+    ADULT_LABEL_STYLESHEET,
+    DAY_PLACEHOLDER_STYLESHEET,
+    MARK_STYLESHEET_TEMPLATE,
+)
 
 
 @dataclass
@@ -55,8 +60,6 @@ class WorkLabel(QLabel):
 
     def _update_text(self):
         txt = f"{self.work.name} {self.work.plan}/{self.work.done}"
-        if self.work.is_adult:
-            txt += " 18+"
         self.setText(txt)
         desc = PRIORITY_DESCRIPTIONS.get(PriorityLevel(self.work.priority), "")
         tip = f"Приоритет: {self.work.priority} — {desc}" if desc else f"Приоритет: {self.work.priority}"
@@ -183,7 +186,7 @@ class CalendarPanel(QWidget):
         lay.setContentsMargins(2, 2, 2, 2)
         lay.setSpacing(2)
         day_lbl = QLabel(str(day))
-        day_lbl.setStyleSheet("color: gray;")
+        day_lbl.setStyleSheet(DAY_PLACEHOLDER_STYLESHEET)
         lay.addWidget(day_lbl)
         lay.addStretch(1)
         w.setEnabled(False)
@@ -204,14 +207,20 @@ class CalendarPanel(QWidget):
             hl = QHBoxLayout()
             mark = QFrame()
             mark.setFixedSize(8, 8)
-            mark.setStyleSheet(f"background:{color_for(work.priority)}; border-radius:4px;")
+            mark.setStyleSheet(
+                MARK_STYLESHEET_TEMPLATE.format(color_for(work.priority))
+            )
             desc = PRIORITY_DESCRIPTIONS.get(PriorityLevel(work.priority), "")
             if desc:
                 mark.setToolTip(f"{work.priority} — {desc}")
-            hl.addWidget(mark)
+            hl.addWidget(mark, alignment=Qt.AlignTop)
             lbl = WorkLabel(self, day, work)
-            hl.addWidget(lbl)
+            hl.addWidget(lbl, alignment=Qt.AlignTop)
             hl.addStretch(1)
+            if work.is_adult:
+                adult_lbl = QLabel("18+")
+                adult_lbl.setStyleSheet(ADULT_LABEL_STYLESHEET)
+                hl.addWidget(adult_lbl, alignment=Qt.AlignRight | Qt.AlignTop)
             lay.addLayout(hl)
         lay.addStretch(1)
         return w
