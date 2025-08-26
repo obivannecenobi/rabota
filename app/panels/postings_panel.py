@@ -54,6 +54,7 @@ class PostingsPanel(QWidget):
     def __init__(self, parent=None, storage: Optional[Storage] = None):
         super().__init__(parent)
         self.edit_mode = False
+        self.scale_percent = 100
         self.storage = storage or Storage(Path("data"))
 
         lay = QVBoxLayout(self)
@@ -73,6 +74,16 @@ class PostingsPanel(QWidget):
         self.edit_mode = enabled
         trigger = QTableWidget.DoubleClicked if enabled else QTableWidget.NoEditTriggers
         self.table.setEditTriggers(trigger)
+        # ensure scaling is preserved when toggling edit mode
+        self.set_scale(self.scale_percent)
+
+    def set_scale(self, percent: int):
+        self.scale_percent = max(50, min(200, percent))
+        f = self.font()
+        f.setPointSize(int(12 * self.scale_percent / 100))
+        self.setFont(f)
+        for r in range(self.table.rowCount()):
+            self.table.setRowHeight(r, int(24 * self.scale_percent / 100))
 
     def _priority_color(self, p: int) -> str:
         return color_for(p)
@@ -138,6 +149,7 @@ class PostingsPanel(QWidget):
                 self._set_text(row, 1, p.work)
                 self._set_text(row, 2, p.chapter)
                 self._set_priority(row, p.priority)
+        self.set_scale(self.scale_percent)
 
     def save_month(self, year: int, month: int):
         days = self.table.rowCount()
