@@ -104,6 +104,9 @@ class MainWindow(QMainWindow):
         # Toolbar/Actions
         self._build_toolbar()
 
+        # Menu
+        self._build_menu()
+
         # Apply initial prefs
         self.apply_prefs()
 
@@ -187,6 +190,27 @@ class MainWindow(QMainWindow):
             lbl.setStyleSheet(f"background:{color}; padding:2px; border-radius:3px; color:#000;")
             lay.addWidget(lbl)
         tb.addWidget(legend)
+
+    def _build_menu(self):
+        menu = self.menuBar().addMenu("Вид")
+        self.act_show_left = menu.addAction("Показать левую панель")
+        self.act_show_left.triggered.connect(self.left_dock.show)
+        self.left_dock.visibilityChanged.connect(
+            lambda vis: self.act_show_left.setEnabled(not vis)
+        )
+        self.act_show_left.setEnabled(not self.left_dock.isVisible())
+        self.act_show_right = menu.addAction("Показать правую панель")
+        self.act_show_right.triggered.connect(self.right_dock.show)
+        self.right_dock.visibilityChanged.connect(
+            lambda vis: self.act_show_right.setEnabled(not vis)
+        )
+        self.act_show_right.setEnabled(not self.right_dock.isVisible())
+        self.act_show_bottom = menu.addAction("Показать нижнюю панель")
+        self.act_show_bottom.triggered.connect(self.bottom_dock.show)
+        self.bottom_dock.visibilityChanged.connect(
+            lambda vis: self.act_show_bottom.setEnabled(not vis)
+        )
+        self.act_show_bottom.setEnabled(not self.bottom_dock.isVisible())
 
     def pick_save_dir(self):
         d = QFileDialog.getExistingDirectory(self, "Выбрать папку сохранения")
