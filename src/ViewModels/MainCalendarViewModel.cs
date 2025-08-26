@@ -1,13 +1,12 @@
 using System;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
-using System.IO;
 using System.Linq;
-using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Windows.Input;
 using System.Windows.Media;
 using CalendarApp.Services;
+using CalendarApp.Data;
 
 namespace CalendarApp.ViewModels
 {
@@ -42,6 +41,7 @@ namespace CalendarApp.ViewModels
             {
                 if (selectedYear != value)
                 {
+                    SaveData();
                     selectedYear = value;
                     OnPropertyChanged(nameof(SelectedYear));
                     GenerateCalendar();
@@ -58,6 +58,7 @@ namespace CalendarApp.ViewModels
             {
                 if (selectedMonth != value)
                 {
+                    SaveData();
                     selectedMonth = value;
                     OnPropertyChanged(nameof(SelectedMonth));
                     GenerateCalendar();
@@ -85,9 +86,9 @@ namespace CalendarApp.ViewModels
             GenerateCalendar();
             LoadData();
             ApplySortAndFilter();
-        }
 
-        private string DataFilePath => Path.Combine(AppDomain.CurrentDomain.BaseDirectory, $"calendar_{SelectedYear}_{SelectedMonth}.json");
+            AppDomain.CurrentDomain.ProcessExit += (_, __) => SaveData();
+        }
 
         private void GenerateCalendar()
         {
@@ -101,21 +102,17 @@ namespace CalendarApp.ViewModels
 
         private void SaveData()
         {
-            var options = new JsonSerializerOptions { WriteIndented = true };
-            File.WriteAllText(DataFilePath, JsonSerializer.Serialize(Days, options));
+            if (SelectedYear == 0 || SelectedMonth == 0) return;
+            DataStore.Save(Days, SelectedYear, SelectedMonth);
         }
 
         private void LoadData()
         {
-            if (File.Exists(DataFilePath))
+            var items = DataStore.Load<ObservableCollection<DayTask>>(SelectedYear, SelectedMonth);
+            if (items != null)
             {
-                var json = File.ReadAllText(DataFilePath);
-                var items = JsonSerializer.Deserialize<ObservableCollection<DayTask>>(json);
-                if (items != null)
-                {
-                    Days.Clear();
-                    foreach (var item in items) Days.Add(item);
-                }
+                Days.Clear();
+                foreach (var item in items) Days.Add(item);
             }
 
             ApplySortAndFilter();
