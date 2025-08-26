@@ -13,7 +13,7 @@ from PySide6.QtWidgets import (
     QComboBox,
 )
 
-from .styles import base_stylesheet, apply_glass_effect
+from .styles import base_stylesheet, light_stylesheet, apply_glass_effect
 from .settings_dialog import SettingsDialog
 from .version import get_version
 from .central.calendar_panel import CalendarPanel
@@ -156,22 +156,6 @@ class MainWindow(QMainWindow):
 
         tb.addSeparator()
 
-        theme_group = QActionGroup(self)
-        self.theme_actions = {}
-        act_dark = QAction("Тёмная", self, checkable=True)
-        act_dark.triggered.connect(lambda: self.set_theme("dark"))
-        theme_group.addAction(act_dark)
-        tb.addAction(act_dark)
-        self.theme_actions["dark"] = act_dark
-
-        act_light = QAction("Светлая", self, checkable=True)
-        act_light.triggered.connect(lambda: self.set_theme("light"))
-        theme_group.addAction(act_light)
-        tb.addAction(act_light)
-        self.theme_actions["light"] = act_light
-
-        tb.addSeparator()
-
         self.palette_combo = QComboBox()
         self.palette_combo.addItem("Циан", "cyan")
         self.palette_combo.addItem("Оранж", "orange")
@@ -264,8 +248,11 @@ class MainWindow(QMainWindow):
                 neon_intensity=self.prefs["neon_intensity"]
             ))
         else:
-            # For light theme use default palette and no stylesheet
-            self.setStyleSheet("")
+            self.setStyleSheet(light_stylesheet(
+                accent=self.prefs["accent"],
+                neon_size=self.prefs["neon_size"],
+                neon_intensity=self.prefs["neon_intensity"]
+            ))
             self.setPalette(self.style().standardPalette())
 
         # Glass
@@ -289,11 +276,6 @@ class MainWindow(QMainWindow):
         for pf, act in getattr(self, "priority_actions", {}).items():
             act.blockSignals(True)
             act.setChecked(pf == filt)
-            act.blockSignals(False)
-        # Theme actions state
-        for name, act in getattr(self, "theme_actions", {}).items():
-            act.blockSignals(True)
-            act.setChecked(name == self.prefs.get("theme"))
             act.blockSignals(False)
         # Palette combo state
         if hasattr(self, "palette_combo"):

@@ -1,7 +1,7 @@
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel, QComboBox, QPushButton,
-    QColorDialog, QSlider, QFileDialog, QCheckBox, QSpinBox, QTabWidget, QWidget, QFormLayout, QLineEdit
+    QColorDialog, QSlider, QFileDialog, QCheckBox, QSpinBox, QTabWidget, QWidget, QFormLayout, QLineEdit, QRadioButton
 )
 
 from .priority_service import PriorityFilter
@@ -23,9 +23,18 @@ class SettingsDialog(QDialog):
         # Theme tab
         theme_tab = QWidget()
         fl = QFormLayout(theme_tab)
-        self.theme_combo = QComboBox()
-        self.theme_combo.addItems(["Ночная (тёмная)", "Дневная (светлая)"])
-        self.theme_combo.setCurrentIndex(0 if current.get("theme","dark")=="dark" else 1)
+        theme_box = QWidget()
+        thl = QHBoxLayout(theme_box)
+        thl.setContentsMargins(0, 0, 0, 0)
+        self.dark_radio = QRadioButton("Тёмная")
+        self.light_radio = QRadioButton("Светлая")
+        if current.get("theme", "dark") == "dark":
+            self.dark_radio.setChecked(True)
+        else:
+            self.light_radio.setChecked(True)
+        thl.addWidget(self.dark_radio)
+        thl.addWidget(self.light_radio)
+        fl.addRow("Тема", theme_box)
 
         # Palette / accent
         self.palette_combo = QComboBox()
@@ -45,7 +54,6 @@ class SettingsDialog(QDialog):
         self.texture_slider = QSlider(Qt.Horizontal); self.texture_slider.setRange(0, 10); self.texture_slider.setValue(current.get("glass_texture", 2))
         self.sharp_slider = QSlider(Qt.Horizontal); self.sharp_slider.setRange(0, 10); self.sharp_slider.setValue(current.get("glass_sharpness", 5))
 
-        fl.addRow("Тема", self.theme_combo)
         fl.addRow("Палитра", self.palette_combo)
         fl.addRow("Акцент", self.accent_btn)
         fl.addRow(self.glass_chk)
@@ -160,7 +168,7 @@ class SettingsDialog(QDialog):
 
     def apply(self):
         res = SettingsResult(
-            theme = "dark" if self.theme_combo.currentIndex()==0 else "light",
+            theme = "dark" if self.dark_radio.isChecked() else "light",
             accent = self._accent,
             palette = self.palette_combo.currentData(),
             glass_enabled = self.glass_chk.isChecked(),
