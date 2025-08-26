@@ -78,6 +78,7 @@ class StatsPanel(QWidget):
         self.storage = storage or Storage(Path("data"))
         self.current_year = 0
         self.current_month = 0
+        self.scale_percent = 100
 
         lay = QVBoxLayout(self)
         lay.addWidget(QLabel("Результаты / Статистика"))
@@ -130,6 +131,17 @@ class StatsPanel(QWidget):
             charts_lay.addWidget(ce)
             self.chart_sections[name] = ce
         charts_lay.addStretch()
+
+    # ------------------------------------------------------------------
+    def set_scale(self, percent: int):
+        self.scale_percent = max(50, min(200, percent))
+        f = self.font()
+        f.setPointSize(int(12 * self.scale_percent / 100))
+        self.setFont(f)
+        for r in range(self.metrics_table.rowCount()):
+            self.metrics_table.setRowHeight(r, int(24 * self.scale_percent / 100))
+        for r in range(self.software_table.rowCount()):
+            self.software_table.setRowHeight(r, int(24 * self.scale_percent / 100))
 
     # ------------------------------------------------------------------
     def set_month(self, year: int, month: int):
@@ -190,6 +202,8 @@ class StatsPanel(QWidget):
         for name, section in self.chart_sections.items():
             values = [int(d.get("metrics", {}).get(name, 0) or 0) for d in monthly_data]
             section.set_series(values)
+
+        self.set_scale(self.scale_percent)
 
     # ------------------------------------------------------------------
     def toggle_charts(self):
