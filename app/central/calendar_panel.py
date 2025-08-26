@@ -48,6 +48,53 @@ class Work:
         )
 
 
+class PriorityMark(QFrame):
+    def __init__(self, panel: "CalendarPanel", day: int, work: Work):
+        super().__init__()
+        self.panel = panel
+        self.day = day
+        self.work = work
+        self.setFixedSize(8, 8)
+        self.setCursor(Qt.PointingHandCursor)
+        self._update()
+
+    def _update(self):
+        self.setStyleSheet(
+            MARK_STYLESHEET_TEMPLATE.format(color_for(self.work.priority))
+        )
+        desc = PRIORITY_DESCRIPTIONS.get(PriorityLevel(self.work.priority), "")
+        tip = f"Приоритет: {self.work.priority}"
+        if desc:
+            tip += f" — {desc}"
+        tip += "\nЛКМ: изменить\nПКМ: выбрать"
+        self.setToolTip(tip)
+
+    def mousePressEvent(self, event):
+        if event.button() == Qt.LeftButton:
+            p = self.work.priority + 1
+            if p > int(PriorityLevel.Four):
+                p = int(PriorityLevel.One)
+            override_priority(self.work, p)
+            self.panel.save_month()
+            self.panel.refresh_day(self.day)
+        elif event.button() == Qt.RightButton:
+            menu = QMenu(self)
+            actions = []
+            for lvl in PriorityLevel:
+                act = menu.addAction(f"{int(lvl)}")
+                act.setData(int(lvl))
+                actions.append(act)
+            chosen = menu.exec(self.mapToGlobal(event.pos()))
+            if chosen:
+                p = int(chosen.data())
+                if p != self.work.priority:
+                    override_priority(self.work, p)
+                    self.panel.save_month()
+                    self.panel.refresh_day(self.day)
+        else:
+            super().mousePressEvent(event)
+
+
 class WorkLabel(QLabel):
     def __init__(self, panel: "CalendarPanel", day: int, work: Work):
         super().__init__()
@@ -205,14 +252,7 @@ class CalendarPanel(QWidget):
         works = filter_tasks(works, self.priority_filter)
         for work in sort_tasks(works):
             hl = QHBoxLayout()
-            mark = QFrame()
-            mark.setFixedSize(8, 8)
-            mark.setStyleSheet(
-                MARK_STYLESHEET_TEMPLATE.format(color_for(work.priority))
-            )
-            desc = PRIORITY_DESCRIPTIONS.get(PriorityLevel(work.priority), "")
-            if desc:
-                mark.setToolTip(f"{work.priority} — {desc}")
+            mark = PriorityMark(self, day, work)
             hl.addWidget(mark, alignment=Qt.AlignTop)
             lbl = WorkLabel(self, day, work)
             hl.addWidget(lbl, alignment=Qt.AlignTop)
