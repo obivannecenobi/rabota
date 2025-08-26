@@ -9,10 +9,10 @@ class PriorityLevel(IntEnum):
     Four = 4
 
 PRIORITY_COLORS = {
-    PriorityLevel.One: "#90EE90",   # LightGreen
-    PriorityLevel.Two: "#F0E68C",   # Khaki
-    PriorityLevel.Three: "#FA8072", # Salmon
-    PriorityLevel.Four: "#CD5C5C",  # IndianRed
+    PriorityLevel.One: "#00FF00",  # Bright Green
+    PriorityLevel.Two: "#008000",  # Dark Green
+    PriorityLevel.Three: "#FFFF00",  # Yellow
+    PriorityLevel.Four: "#FFA500",  # Orange
 }
 
 # Human readable descriptions for tooltips/legends
