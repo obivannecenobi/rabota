@@ -73,7 +73,7 @@ class MainWindow(QMainWindow):
         self.bottom_dock = QDockWidget("Результаты / Статистика", self)
         self.bottom_dock.setAllowedAreas(Qt.BottomDockWidgetArea)
         self.bottom_dock.setFeatures(QDockWidget.DockWidgetClosable | QDockWidget.DockWidgetMovable)
-        self.stats_panel = StatsPanel(self.bottom_dock)
+        self.stats_panel = StatsPanel(self.bottom_dock, storage=self.storage)
         self.bottom_dock.setWidget(self.stats_panel)
         self.addDockWidget(Qt.BottomDockWidgetArea, self.bottom_dock)
 
@@ -192,6 +192,8 @@ class MainWindow(QMainWindow):
         m = self.central.month.currentIndex() + 1
         self.left_panel.load_month(self.central, y, m)
         self.right_panel.load_month(y, m)
+        self.stats_panel.set_month(y, m)
+        self.stats_panel.load_year(y)
         stats = self.storage.load_json(f"{y}/stats_{m:02d}.json", {})
         vis = bool(stats.get("charts_visible"))
         self.stats_panel.charts_frame.setVisible(vis)
