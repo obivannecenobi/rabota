@@ -1,5 +1,7 @@
 from enum import IntEnum
 from typing import Iterable, Dict, Tuple
+from pathlib import Path
+import logging
 from PySide6.QtCore import QTimer
 
 class PriorityLevel(IntEnum):
@@ -22,6 +24,17 @@ PRIORITY_DESCRIPTIONS = {
     PriorityLevel.Three: "Высокий",
     PriorityLevel.Four: "Срочный",
 }
+
+# Path to the priority override log
+LOG_FILE = Path(__file__).resolve().parent / "priority_overrides.log"
+
+_logger = logging.getLogger("priority_overrides")
+if not _logger.handlers:
+    handler = logging.FileHandler(LOG_FILE, encoding="utf-8")
+    formatter = logging.Formatter("%(asctime)s - %(message)s")
+    handler.setFormatter(formatter)
+    _logger.addHandler(handler)
+_logger.setLevel(logging.INFO)
 
 class PriorityFilter(IntEnum):
     OneToFour = 0
@@ -59,6 +72,14 @@ def override_priority(task: object, new_priority: int, duration_sec: int = 86400
     timer.timeout.connect(_reset)
     _overrides[task] = (timer, original)
     timer.start(duration_sec * 1000)
+    task_name = getattr(task, "title", getattr(task, "name", str(task)))
+    _logger.info(
+        "override %s: %s -> %s for %s sec",
+        task_name,
+        original,
+        new_priority,
+        duration_sec,
+    )
 
 
 def cancel_override(task: object) -> None:
