@@ -113,6 +113,9 @@ class WorkLabel(QLabel):
         if self.work.comment:
             tip += f"\n{self.work.comment}"
         self.setToolTip(tip)
+        # Set border color according to priority
+        color = color_for(self.work.priority)
+        self.setStyleSheet(f"border: 1px solid {color};")
 
     def _show_menu(self, pos):
         menu = QMenu(self)
