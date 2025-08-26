@@ -31,6 +31,7 @@ def base_stylesheet(accent: str = "#00E5FF", neon_size: int = 8, neon_intensity:
         color: #D0D0D0;
         border: none;
         padding: 6px;
+        font-weight: bold;
     }}
     QPushButton {{
         background-color: #202325;
@@ -92,6 +93,7 @@ def light_stylesheet(accent: str = "#000000", neon_size: int = 8, neon_intensity
         color: #202020;
         border: none;
         padding: 6px;
+        font-weight: bold;
     }}
     QPushButton {{
         background-color: #E8E8E8;
