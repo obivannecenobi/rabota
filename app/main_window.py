@@ -9,7 +9,11 @@ from PySide6.QtWidgets import (
     QStatusBar,
     QWidget,
     QHBoxLayout,
+    QVBoxLayout,
     QComboBox,
+    QDialog,
+    QTextEdit,
+    QPushButton,
 )
 
 from .styles import base_stylesheet, light_stylesheet, apply_glass_effect
@@ -20,7 +24,47 @@ from .panels.top_month_panel import TopMonthPanel
 from .panels.postings_panel import PostingsPanel
 from .panels.stats_panel import StatsPanel
 from .storage import Storage
-from .priority_service import PriorityFilter, PRIORITY_COLORS, PRIORITY_DESCRIPTIONS
+from .priority_service import (
+    PriorityFilter,
+    PRIORITY_COLORS,
+    PRIORITY_DESCRIPTIONS,
+    LOG_FILE,
+)
+
+
+class LegendWidget(QWidget):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        lay = QHBoxLayout(self)
+        lay.setContentsMargins(4, 0, 4, 0)
+        for p, color in PRIORITY_COLORS.items():
+            lbl = QLabel(f"{int(p)} — {PRIORITY_DESCRIPTIONS.get(p, '')}")
+            lbl.setStyleSheet(
+                f"background:{color}; padding:2px; border-radius:3px; color:#000;"
+            )
+            lay.addWidget(lbl)
+
+
+class PriorityLogDialog(QDialog):
+    def __init__(self, log_path: Path, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Журнал изменений приоритетов")
+        self.resize(500, 400)
+        layout = QVBoxLayout(self)
+        self.text = QTextEdit(self)
+        self.text.setReadOnly(True)
+        layout.addWidget(self.text)
+        refresh_btn = QPushButton("Обновить", self)
+        refresh_btn.clicked.connect(self.refresh)
+        layout.addWidget(refresh_btn)
+        self.log_path = log_path
+        self.refresh()
+
+    def refresh(self):
+        if self.log_path.exists():
+            self.text.setPlainText(self.log_path.read_text(encoding="utf-8"))
+        else:
+            self.text.setPlainText("Журнал пуст.")
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -164,18 +208,12 @@ class MainWindow(QMainWindow):
         )
         tb.addWidget(self.palette_combo)
 
-        legend = QWidget()
-        lay = QHBoxLayout(legend)
-        lay.setContentsMargins(4, 0, 4, 0)
-        tip_lines = []
-        for p, color in PRIORITY_COLORS.items():
-            lbl = QLabel(str(int(p)))
-            lbl.setStyleSheet(f"background:{color}; padding:2px; border-radius:3px; color:#000;")
-            lbl.setToolTip(PRIORITY_DESCRIPTIONS.get(p, ""))
-            lay.addWidget(lbl)
-            tip_lines.append(f"{int(p)} — {PRIORITY_DESCRIPTIONS.get(p, '')}")
-        legend.setToolTip("\n".join(tip_lines))
+        legend = LegendWidget(self)
         tb.addWidget(legend)
+
+        act_log = QAction("Журнал", self)
+        act_log.triggered.connect(self.open_priority_log)
+        tb.addAction(act_log)
 
     def _build_menu(self):
         menu = self.menuBar().addMenu("Вид")
@@ -197,6 +235,10 @@ class MainWindow(QMainWindow):
             lambda vis: self.act_show_bottom.setEnabled(not vis)
         )
         self.act_show_bottom.setEnabled(not self.bottom_dock.isVisible())
+
+    def open_priority_log(self):
+        dlg = PriorityLogDialog(LOG_FILE, self)
+        dlg.exec()
 
     def set_priority_filter(self, filt: PriorityFilter):
         self.prefs["priority_filter"] = int(filt)
