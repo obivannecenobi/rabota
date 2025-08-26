@@ -6,9 +6,10 @@ visualised by a coloured marker. Data is persisted via :class:`Storage` per
 month/year similarly to other panels.
 """
 
+import calendar
 from dataclasses import dataclass, asdict
 from pathlib import Path
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QColor
@@ -105,23 +106,29 @@ class PostingsPanel(QWidget):
     # ------------------------------------------------------------------
     # persistence
     def load_month(self, year: int, month: int):
-        data = self.storage.load_json(f"{year}/postings_{month:02d}.json", []) or []
-        postings: List[Posting] = [Posting.from_dict(d) for d in data if isinstance(d, dict)]
-        self.table.setRowCount(max(len(postings), 10))
-        for row, p in enumerate(postings):
-            self._set_text(row, 0, p.date)
-            self._set_text(row, 1, p.work)
-            self._set_text(row, 2, p.chapter)
-            self._set_priority(row, p.priority)
+        days = calendar.monthrange(year, month)[1]
+        data = self.storage.load_json(f"{year}/postings_{month:02d}.json", {}) or {}
+        self.table.setRowCount(days)
+        for day in range(1, days + 1):
+            row = day - 1
+            entry = data.get(str(day))
+            if isinstance(entry, dict):
+                p = Posting.from_dict(entry)
+                self._set_text(row, 0, p.date)
+                self._set_text(row, 1, p.work)
+                self._set_text(row, 2, p.chapter)
+                self._set_priority(row, p.priority)
 
     def save_month(self, year: int, month: int):
-        data: List[dict] = []
-        for r in range(self.table.rowCount()):
+        days = self.table.rowCount()
+        data: Dict[str, dict] = {}
+        for day in range(1, days + 1):
+            r = day - 1
             date = self.table.item(r, 0).text() if self.table.item(r, 0) else ""
             work = self.table.item(r, 1).text() if self.table.item(r, 1) else ""
             chap = self.table.item(r, 2).text() if self.table.item(r, 2) else ""
             pr_item = self.table.item(r, 3)
             priority = pr_item.data(Qt.UserRole) if pr_item else 0
-            if any([date, work, chap]):
-                data.append(Posting(date, work, chap, priority).to_dict())
+            if any([date, work, chap, priority]):
+                data[str(day)] = Posting(date, work, chap, priority).to_dict()
         self.storage.save_json(f"{year}/postings_{month:02d}.json", data)
