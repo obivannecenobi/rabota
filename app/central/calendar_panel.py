@@ -110,7 +110,6 @@ class CalendarPanel(QWidget):
         self.table = QTableWidget(6, 7, self)
         self.table.setEditTriggers(QTableWidget.NoEditTriggers)
         self.table.verticalHeader().setVisible(False)
-        self.table.horizontalHeader().setVisible(False)
         self.table.setShowGrid(True)
         lay.addWidget(self.table)
 
@@ -139,13 +138,24 @@ class CalendarPanel(QWidget):
         self.load_month(y, m)
         first = QDate(y, m, 1)
         start_col = first.dayOfWeek() - 1  # 0..6 (Mon..Sun)
-        day = 1
         days_in_month = first.daysInMonth()
+        self.table.horizontalHeader().setVisible(True)
+        self.table.setHorizontalHeaderLabels(["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"])
         # Clear
         self._day_pos.clear()
         for r in range(6):
             for c in range(7):
                 self.table.setCellWidget(r, c, QWidget())
+
+        # Previous month days
+        prev = first.addMonths(-1)
+        prev_days = prev.daysInMonth()
+        for c in range(start_col):
+            day_num = prev_days - start_col + c + 1
+            self.table.setCellWidget(0, c, self.build_day_placeholder(day_num))
+
+        # Current month days
+        day = 1
         r = 0
         c = start_col
         while day <= days_in_month and r < 6:
@@ -156,6 +166,28 @@ class CalendarPanel(QWidget):
             if c >= 7:
                 c = 0
                 r += 1
+
+        # Next month days
+        next_day = 1
+        while r < 6:
+            self.table.setCellWidget(r, c, self.build_day_placeholder(next_day))
+            next_day += 1
+            c += 1
+            if c >= 7:
+                c = 0
+                r += 1
+
+    def build_day_placeholder(self, day: int) -> QWidget:
+        w = QWidget()
+        lay = QVBoxLayout(w)
+        lay.setContentsMargins(2, 2, 2, 2)
+        lay.setSpacing(2)
+        day_lbl = QLabel(str(day))
+        day_lbl.setStyleSheet("color: gray;")
+        lay.addWidget(day_lbl)
+        lay.addStretch(1)
+        w.setEnabled(False)
+        return w
 
     def build_day_widget(self, day: int) -> QWidget:
         w = QWidget()
