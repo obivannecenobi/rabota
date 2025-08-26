@@ -36,6 +36,9 @@ class MainWindow(QMainWindow):
             "palette": self.settings.value("palette", "cyan"),
             "glass_enabled": self.settings.value("glass_enabled", False, type=bool),
             "glass_opacity": float(self.settings.value("glass_opacity", 0.9)),
+            "glass_blur": int(self.settings.value("glass_blur", 6)),
+            "glass_texture": int(self.settings.value("glass_texture", 2)),
+            "glass_sharpness": int(self.settings.value("glass_sharpness", 5)),
             "neon_size": int(self.settings.value("neon_size", 8)),
             "neon_intensity": int(self.settings.value("neon_intensity", 60)),
             "save_dir": self.settings.value("save_dir", ""),
@@ -256,7 +259,14 @@ class MainWindow(QMainWindow):
             self.setPalette(self.style().standardPalette())
 
         # Glass
-        apply_glass_effect(self, self.prefs.get("glass_enabled", False), self.prefs.get("glass_opacity", 0.9))
+        apply_glass_effect(
+            self,
+            self.prefs.get("glass_enabled", False),
+            self.prefs.get("glass_opacity", 0.9),
+            self.prefs.get("glass_blur", 6),
+            self.prefs.get("glass_texture", 2),
+            self.prefs.get("glass_sharpness", 5),
+        )
         # Fonts
         if self.prefs.get("title_font") or self.prefs.get("text_font"):
             f = self.font()

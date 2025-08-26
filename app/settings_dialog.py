@@ -54,6 +54,9 @@ class SettingsDialog(QDialog):
         self.texture_slider = QSlider(Qt.Horizontal); self.texture_slider.setRange(0, 10); self.texture_slider.setValue(current.get("glass_texture", 2))
         self.sharp_slider = QSlider(Qt.Horizontal); self.sharp_slider.setRange(0, 10); self.sharp_slider.setValue(current.get("glass_sharpness", 5))
 
+        self.glass_chk.toggled.connect(self._glass_toggled)
+        self._glass_toggled(self.glass_chk.isChecked())
+
         fl.addRow("Палитра", self.palette_combo)
         fl.addRow("Акцент", self.accent_btn)
         fl.addRow(self.glass_chk)
@@ -165,6 +168,10 @@ class SettingsDialog(QDialog):
         else:
             self.accent_btn.setEnabled(False)
             self._accent = self._palette_map.get(key, self._accent)
+
+    def _glass_toggled(self, checked: bool):
+        for w in (self.opacity_slider, self.blur_slider, self.texture_slider, self.sharp_slider):
+            w.setEnabled(checked)
 
     def apply(self):
         res = SettingsResult(

@@ -1,4 +1,5 @@
 from PySide6.QtGui import QColor
+from PySide6.QtWidgets import QGraphicsBlurEffect
 
 def base_stylesheet(accent: str = "#00E5FF", neon_size: int = 8, neon_intensity: int = 60):
     '''Return a base dark stylesheet with rounded controls and a pseudo-neon focus.'''
@@ -123,9 +124,35 @@ def light_stylesheet(accent: str = "#000000", neon_size: int = 8, neon_intensity
     }}
     """
     
-def apply_glass_effect(window, enabled: bool, opacity: float = 0.9):
-    '''Placeholder glass effect: adjust window opacity. Real acrylic blur can be added later for Windows via DWM.'''
+def apply_glass_effect(window, enabled: bool, opacity: float = 0.9,
+                       blur: int | None = None, texture: int | None = None,
+                       sharpness: int | None = None):
+    """Apply a simple glass-like effect.
+
+    Besides adjusting window opacity, this helper stores the desired blur,
+    texture and sharpness values and applies a ``QGraphicsBlurEffect`` to the
+    window.  Parameters are optional; if omitted the values are read from the
+    window's ``prefs`` dictionary when available.
+    """
+
+    prefs = getattr(window, "prefs", {})
+    if blur is None:
+        blur = prefs.get("glass_blur", 6)
+    if texture is None:
+        texture = prefs.get("glass_texture", 2)
+    if sharpness is None:
+        sharpness = prefs.get("glass_sharpness", 5)
+
     if enabled:
         window.setWindowOpacity(opacity)
+        effect = QGraphicsBlurEffect()
+        effect.setBlurRadius(blur)
+        window.setGraphicsEffect(effect)
     else:
         window.setWindowOpacity(1.0)
+        window.setGraphicsEffect(None)
+
+    # Persist values on the window for future calls
+    prefs["glass_blur"] = blur
+    prefs["glass_texture"] = texture
+    prefs["glass_sharpness"] = sharpness
