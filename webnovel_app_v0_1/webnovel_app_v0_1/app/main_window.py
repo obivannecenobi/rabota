@@ -10,6 +10,7 @@ from PySide6.QtWidgets import (
     QFileDialog,
     QWidget,
     QHBoxLayout,
+    QComboBox,
 )
 
 from .styles import base_stylesheet, apply_glass_effect
@@ -32,6 +33,7 @@ class MainWindow(QMainWindow):
         self.prefs = {
             "theme": self.settings.value("theme", "dark"),
             "accent": self.settings.value("accent", "#00E5FF"),
+            "palette": self.settings.value("palette", "cyan"),
             "glass_enabled": self.settings.value("glass_enabled", False, type=bool),
             "glass_opacity": float(self.settings.value("glass_opacity", 0.9)),
             "neon_size": int(self.settings.value("neon_size", 8)),
@@ -43,6 +45,7 @@ class MainWindow(QMainWindow):
             "central_scale": int(self.settings.value("central_scale", 100)),
             "left_edit_mode": self.settings.value("left_edit_mode", False, type=bool),
             "right_edit_mode": self.settings.value("right_edit_mode", False, type=bool),
+            "priority_filter": int(self.settings.value("priority_filter", PriorityFilter.OneToFour)),
         }
 
         # Storage
@@ -135,16 +138,46 @@ class MainWindow(QMainWindow):
         tb.addSeparator()
 
         group = QActionGroup(self)
+        self.priority_actions = {}
         act_all = QAction("1-4", self, checkable=True)
-        act_all.setChecked(True)
         act_all.triggered.connect(lambda: self.set_priority_filter(PriorityFilter.OneToFour))
         group.addAction(act_all)
         tb.addAction(act_all)
+        self.priority_actions[PriorityFilter.OneToFour] = act_all
 
         act_low = QAction("1-2", self, checkable=True)
         act_low.triggered.connect(lambda: self.set_priority_filter(PriorityFilter.OneToTwo))
         group.addAction(act_low)
         tb.addAction(act_low)
+        self.priority_actions[PriorityFilter.OneToTwo] = act_low
+
+        tb.addSeparator()
+
+        theme_group = QActionGroup(self)
+        self.theme_actions = {}
+        act_dark = QAction("Тёмная", self, checkable=True)
+        act_dark.triggered.connect(lambda: self.set_theme("dark"))
+        theme_group.addAction(act_dark)
+        tb.addAction(act_dark)
+        self.theme_actions["dark"] = act_dark
+
+        act_light = QAction("Светлая", self, checkable=True)
+        act_light.triggered.connect(lambda: self.set_theme("light"))
+        theme_group.addAction(act_light)
+        tb.addAction(act_light)
+        self.theme_actions["light"] = act_light
+
+        tb.addSeparator()
+
+        self.palette_combo = QComboBox()
+        self.palette_combo.addItem("Циан", "cyan")
+        self.palette_combo.addItem("Оранж", "orange")
+        self.palette_combo.addItem("Фиолет", "purple")
+        self.palette_combo.addItem("Свой", "custom")
+        self.palette_combo.currentIndexChanged.connect(
+            lambda idx: self.set_palette(self.palette_combo.itemData(idx))
+        )
+        tb.addWidget(self.palette_combo)
 
         legend = QWidget()
         lay = QHBoxLayout(legend)
@@ -162,7 +195,30 @@ class MainWindow(QMainWindow):
             self.settings.setValue("save_dir", d)
 
     def set_priority_filter(self, filt: PriorityFilter):
+        self.prefs["priority_filter"] = int(filt)
+        self.settings.setValue("priority_filter", int(filt))
         self.central.set_priority_filter(filt)
+        for pf, act in getattr(self, "priority_actions", {}).items():
+            act.setChecked(pf == filt)
+
+    def set_theme(self, theme: str):
+        self.prefs["theme"] = theme
+        self.settings.setValue("theme", theme)
+        self.apply_prefs()
+
+    def set_palette(self, palette: str):
+        self.prefs["palette"] = palette
+        self.settings.setValue("palette", palette)
+        palette_map = {
+            "cyan": "#00E5FF",
+            "orange": "#FFA500",
+            "purple": "#9C27B0",
+        }
+        if palette != "custom":
+            accent = palette_map.get(palette, self.prefs.get("accent", "#00E5FF"))
+            self.prefs["accent"] = accent
+            self.settings.setValue("accent", accent)
+        self.apply_prefs()
 
     def open_settings(self):
         dlg = SettingsDialog(self, self.prefs)
@@ -176,12 +232,18 @@ class MainWindow(QMainWindow):
         dlg.exec()
 
     def apply_prefs(self):
-        # Stylesheet
-        self.setStyleSheet(base_stylesheet(
-            accent=self.prefs["accent"],
-            neon_size=self.prefs["neon_size"],
-            neon_intensity=self.prefs["neon_intensity"]
-        ))
+        # Stylesheet / Theme
+        if self.prefs.get("theme", "dark") == "dark":
+            self.setStyleSheet(base_stylesheet(
+                accent=self.prefs["accent"],
+                neon_size=self.prefs["neon_size"],
+                neon_intensity=self.prefs["neon_intensity"]
+            ))
+        else:
+            # For light theme use default palette and no stylesheet
+            self.setStyleSheet("")
+            self.setPalette(self.style().standardPalette())
+
         # Glass
         apply_glass_effect(self, self.prefs.get("glass_enabled", False), self.prefs.get("glass_opacity", 0.9))
         # Fonts
@@ -197,6 +259,25 @@ class MainWindow(QMainWindow):
         # Panel edit modes
         self.left_panel.set_edit_mode(self.prefs.get("left_edit_mode", False))
         self.right_panel.set_edit_mode(self.prefs.get("right_edit_mode", False))
+        # Priority filter
+        filt = PriorityFilter(self.prefs.get("priority_filter", PriorityFilter.OneToFour))
+        self.central.set_priority_filter(filt)
+        for pf, act in getattr(self, "priority_actions", {}).items():
+            act.blockSignals(True)
+            act.setChecked(pf == filt)
+            act.blockSignals(False)
+        # Theme actions state
+        for name, act in getattr(self, "theme_actions", {}).items():
+            act.blockSignals(True)
+            act.setChecked(name == self.prefs.get("theme"))
+            act.blockSignals(False)
+        # Palette combo state
+        if hasattr(self, "palette_combo"):
+            idx = self.palette_combo.findData(self.prefs.get("palette", "cyan"))
+            if idx >= 0 and self.palette_combo.currentIndex() != idx:
+                self.palette_combo.blockSignals(True)
+                self.palette_combo.setCurrentIndex(idx)
+                self.palette_combo.blockSignals(False)
 
     def closeEvent(self, e):
         self.settings.setValue("geometry", self.saveGeometry())

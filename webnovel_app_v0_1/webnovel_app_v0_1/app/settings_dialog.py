@@ -4,6 +4,8 @@ from PySide6.QtWidgets import (
     QColorDialog, QSlider, QFileDialog, QCheckBox, QSpinBox, QTabWidget, QWidget, QFormLayout, QLineEdit
 )
 
+from .priority_service import PriorityFilter
+
 class SettingsResult:
     def __init__(self, **kwargs):
         self.__dict__.update(kwargs)
@@ -25,6 +27,14 @@ class SettingsDialog(QDialog):
         self.theme_combo.addItems(["Ночная (тёмная)", "Дневная (светлая)"])
         self.theme_combo.setCurrentIndex(0 if current.get("theme","dark")=="dark" else 1)
 
+        # Palette / accent
+        self.palette_combo = QComboBox()
+        self.palette_combo.addItem("Циан", "cyan")
+        self.palette_combo.addItem("Оранж", "orange")
+        self.palette_combo.addItem("Фиолет", "purple")
+        self.palette_combo.addItem("Свой цвет", "custom")
+        self.palette_combo.currentIndexChanged.connect(self._palette_changed)
+
         self.accent_btn = QPushButton("Выбрать цвет акцента")
         self.accent_btn.clicked.connect(self.pick_accent)
 
@@ -36,12 +46,19 @@ class SettingsDialog(QDialog):
         self.sharp_slider = QSlider(Qt.Horizontal); self.sharp_slider.setRange(0, 10); self.sharp_slider.setValue(current.get("glass_sharpness", 5))
 
         fl.addRow("Тема", self.theme_combo)
+        fl.addRow("Палитра", self.palette_combo)
         fl.addRow("Акцент", self.accent_btn)
         fl.addRow(self.glass_chk)
         fl.addRow("Прозрачность", self.opacity_slider)
         fl.addRow("Размытость", self.blur_slider)
         fl.addRow("Текстура", self.texture_slider)
         fl.addRow("Чёткость", self.sharp_slider)
+
+        # Priority filter preset
+        self.priority_combo = QComboBox()
+        self.priority_combo.addItem("1-4", PriorityFilter.OneToFour)
+        self.priority_combo.addItem("1-2", PriorityFilter.OneToTwo)
+        fl.addRow("Фильтр приоритетов", self.priority_combo)
 
         # Fonts tab
         fonts_tab = QWidget()
@@ -105,17 +122,47 @@ class SettingsDialog(QDialog):
         lay.addLayout(btns)
 
         self._accent = current.get("accent", "#00E5FF")
+        self._palette_map = {
+            "cyan": "#00E5FF",
+            "orange": "#FFA500",
+            "purple": "#9C27B0",
+        }
+        palette_name = current.get("palette", "cyan")
+        idx = self.palette_combo.findData(palette_name)
+        if idx >= 0:
+            self.palette_combo.setCurrentIndex(idx)
+        # Disable accent button for predefined palettes
+        if palette_name != "custom":
+            self._accent = self._palette_map.get(palette_name, self._accent)
+            self.accent_btn.setEnabled(False)
+        # Priority filter
+        pf_idx = self.priority_combo.findData(PriorityFilter(current.get("priority_filter", PriorityFilter.OneToFour)))
+        if pf_idx >= 0:
+            self.priority_combo.setCurrentIndex(pf_idx)
 
     def pick_accent(self):
         from PySide6.QtGui import QColor
         col = QColorDialog.getColor()
         if col.isValid():
             self._accent = col.name()
+            idx = self.palette_combo.findData("custom")
+            if idx >= 0:
+                self.palette_combo.setCurrentIndex(idx)
+            self.accent_btn.setEnabled(True)
+
+    def _palette_changed(self, index):
+        key = self.palette_combo.itemData(index)
+        if key == "custom":
+            self.accent_btn.setEnabled(True)
+        else:
+            self.accent_btn.setEnabled(False)
+            self._accent = self._palette_map.get(key, self._accent)
 
     def apply(self):
         res = SettingsResult(
             theme = "dark" if self.theme_combo.currentIndex()==0 else "light",
             accent = self._accent,
+            palette = self.palette_combo.currentData(),
             glass_enabled = self.glass_chk.isChecked(),
             glass_opacity = self.opacity_slider.value()/100.0,
             glass_blur = self.blur_slider.value(),
@@ -130,6 +177,7 @@ class SettingsDialog(QDialog):
             central_scale = self.central_scale.value(),
             left_edit_mode = self.left_panel_edit.isChecked(),
             right_edit_mode = self.right_panel_edit.isChecked(),
+            priority_filter = int(self.priority_combo.currentData()),
         )
         self.settings_applied.emit(res)
         self.accept()
