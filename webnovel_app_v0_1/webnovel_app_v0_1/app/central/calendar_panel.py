@@ -1,11 +1,64 @@
-from PySide6.QtCore import Qt, QTimer, QDate
-from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QComboBox, QLabel, QTableWidget, QTableWidgetItem, QSpinBox
+from dataclasses import dataclass, asdict
+from pathlib import Path
+
+from PySide6.QtCore import Qt, QDate
+from PySide6.QtWidgets import (
+    QWidget, QVBoxLayout, QHBoxLayout, QComboBox, QLabel, QTableWidget,
+    QSpinBox, QFrame, QInputDialog
+)
+
+from ..storage import Storage
+
+
+@dataclass
+class Work:
+    name: str
+    plan: int = 0
+    done: int = 0
+    priority: int = 0
+    is_adult: bool = False
+
+    def to_dict(self) -> dict:
+        return asdict(self)
+
+    @staticmethod
+    def from_dict(data: dict) -> "Work":
+        return Work(
+            name=data.get("name", ""),
+            plan=int(data.get("plan", 0)),
+            done=int(data.get("done", 0)),
+            priority=int(data.get("priority", 0)),
+            is_adult=bool(data.get("is_adult", False)),
+        )
+
+
+class WorkLabel(QLabel):
+    def __init__(self, panel: "CalendarPanel", day: int, work: Work):
+        super().__init__()
+        self.panel = panel
+        self.day = day
+        self.work = work
+        self._update_text()
+
+    def _update_text(self):
+        txt = f"{self.work.name} {self.work.plan}/{self.work.done}"
+        if self.work.is_adult:
+            txt += " 18+"
+        self.setText(txt)
+
+    def mouseDoubleClickEvent(self, event):
+        self.panel.edit_work(self.day, self.work)
+        self._update_text()
+        super().mouseDoubleClickEvent(event)
 
 class CalendarPanel(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.scale_percent = 100
         self.scale_edit_mode = False
+        self.storage = Storage(Path("data"))
+        self.month_data: dict[int, list[Work]] = {}
+        self._day_pos: dict[int, tuple[int, int]] = {}
 
         lay = QVBoxLayout(self)
         ctrl = QHBoxLayout()
@@ -45,23 +98,86 @@ class CalendarPanel(QWidget):
         self.table.setEditTriggers(QTableWidget.DoubleClicked if enabled else QTableWidget.NoEditTriggers)
 
     def rebuild(self):
-        # Fill calendar grid with day numbers for selected month/year
+        # Fill calendar grid with day numbers and works for selected month/year
         y = self.year.value()
-        m = self.month.currentIndex()+1
+        m = self.month.currentIndex() + 1
+        self.load_month(y, m)
         first = QDate(y, m, 1)
-        # Qt: 1=Mon..7=Sun
         start_col = first.dayOfWeek() - 1  # 0..6 (Mon..Sun)
         day = 1
         days_in_month = first.daysInMonth()
         # Clear
+        self._day_pos.clear()
         for r in range(6):
             for c in range(7):
-                self.table.setItem(r, c, QTableWidgetItem(""))
-        r = 0; c = start_col
+                self.table.setCellWidget(r, c, QWidget())
+        r = 0
+        c = start_col
         while day <= days_in_month and r < 6:
-            it = QTableWidgetItem(str(day))
-            self.table.setItem(r, c, it)
+            self.table.setCellWidget(r, c, self.build_day_widget(day))
+            self._day_pos[day] = (r, c)
             day += 1
             c += 1
-            if c>=7:
-                c = 0; r += 1
+            if c >= 7:
+                c = 0
+                r += 1
+
+    def build_day_widget(self, day: int) -> QWidget:
+        w = QWidget()
+        lay = QVBoxLayout(w)
+        lay.setContentsMargins(2, 2, 2, 2)
+        lay.setSpacing(2)
+        day_lbl = QLabel(str(day))
+        lay.addWidget(day_lbl)
+        for work in sorted(self.month_data.get(day, []), key=lambda x: x.priority, reverse=True):
+            hl = QHBoxLayout()
+            mark = QFrame()
+            mark.setFixedSize(8, 8)
+            mark.setStyleSheet(f"background:{self.priority_color(work.priority)}; border-radius:4px;")
+            hl.addWidget(mark)
+            lbl = WorkLabel(self, day, work)
+            hl.addWidget(lbl)
+            hl.addStretch(1)
+            lay.addLayout(hl)
+        lay.addStretch(1)
+        return w
+
+    def priority_color(self, p: int) -> str:
+        return {
+            3: "#ff5555",  # high
+            2: "#ffaa00",  # medium
+            1: "#55aa55",  # low
+            0: "#888888",  # default
+        }.get(p, "#888888")
+
+    def edit_work(self, day: int, work: Work):
+        plan, ok = QInputDialog.getInt(self, "Plan", "Plan", work.plan, 0, 9999)
+        if ok:
+            work.plan = plan
+        done, ok = QInputDialog.getInt(self, "Done", "Done", work.done, 0, 9999)
+        if ok:
+            work.done = done
+        self.save_month()
+        self.refresh_day(day)
+
+    def refresh_day(self, day: int):
+        pos = self._day_pos.get(day)
+        if pos:
+            r, c = pos
+            self.table.setCellWidget(r, c, self.build_day_widget(day))
+
+    def load_month(self, year: int, month: int):
+        data = self.storage.load_json(f"{year}/{month:02d}.json", default={}) or {}
+        self.month_data = {
+            int(d): [Work.from_dict(w) for w in wl]
+            for d, wl in data.items()
+        }
+
+    def save_month(self):
+        y = self.year.value()
+        m = self.month.currentIndex() + 1
+        data = {
+            str(day): [w.to_dict() for w in works]
+            for day, works in self.month_data.items() if works
+        }
+        self.storage.save_json(f"{y}/{m:02d}.json", data)
