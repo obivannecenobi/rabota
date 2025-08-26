@@ -58,6 +58,7 @@ class MainWindow(QMainWindow):
         self.left_dock.setAllowedAreas(Qt.LeftDockWidgetArea)
         self.left_dock.setFeatures(QDockWidget.DockWidgetClosable | QDockWidget.DockWidgetMovable)
         self.left_panel = TopMonthPanel(self.left_dock)
+        self.left_panel.storage = self.storage
         self.left_dock.setWidget(self.left_panel)
         self.addDockWidget(Qt.LeftDockWidgetArea, self.left_dock)
 
@@ -161,7 +162,9 @@ class MainWindow(QMainWindow):
             if self.prefs.get("text_font"): f.setFamily(self.prefs.get("text_font"))
             self.setFont(f)
         # Central scaling
-        self.central.set_scale(self.prefs.get("central_scale", 100))
+        scale = self.prefs.get("central_scale", 100)
+        self.central.set_scale(scale)
+        self.left_panel.set_scale(scale)
         self.central.set_scale_edit_mode(self.prefs.get("scale_edit_mode", False))
         # Panel edit modes
         self.left_panel.set_edit_mode(self.prefs.get("left_edit_mode", False))
@@ -175,7 +178,7 @@ class MainWindow(QMainWindow):
         y = self.central.year.value()
         m = self.central.month.currentIndex() + 1
         self.central.save_month()
-        self.storage.save_json(f"{y}/top_month_{m:02d}.json", self._dump_table(self.left_panel.table))
+        self.left_panel.save_month(y, m)
         self.storage.save_json(f"{y}/postings_{m:02d}.json", self._dump_table(self.right_panel.table))
         self.storage.save_json(
             f"{y}/stats_{m:02d}.json",
@@ -218,10 +221,9 @@ class MainWindow(QMainWindow):
     def _load_panels(self):
         y = self.central.year.value()
         m = self.central.month.currentIndex() + 1
-        top = self.storage.load_json(f"{y}/top_month_{m:02d}.json", [])
+        self.left_panel.load_month(self.central, y, m)
         postings = self.storage.load_json(f"{y}/postings_{m:02d}.json", [])
         stats = self.storage.load_json(f"{y}/stats_{m:02d}.json", {})
-        self._restore_table(self.left_panel.table, top)
         self._restore_table(self.right_panel.table, postings)
         vis = bool(stats.get("charts_visible"))
         self.stats_panel.charts_frame.setVisible(vis)
