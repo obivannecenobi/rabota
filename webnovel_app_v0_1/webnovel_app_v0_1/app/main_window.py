@@ -1,6 +1,15 @@
+from pathlib import Path
+
 from PySide6.QtCore import Qt, QTimer, QSettings
 from PySide6.QtGui import QAction
-from PySide6.QtWidgets import QMainWindow, QDockWidget, QLabel, QStatusBar, QFileDialog
+from PySide6.QtWidgets import (
+    QMainWindow,
+    QDockWidget,
+    QLabel,
+    QStatusBar,
+    QFileDialog,
+    QTableWidgetItem,
+)
 
 from .styles import base_stylesheet, apply_glass_effect
 from .settings_dialog import SettingsDialog
@@ -9,6 +18,7 @@ from .central.calendar_panel import CalendarPanel
 from .panels.top_month_panel import TopMonthPanel
 from .panels.postings_panel import PostingsPanel
 from .panels.stats_panel import StatsPanel
+from .storage import Storage
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -33,8 +43,14 @@ class MainWindow(QMainWindow):
             "right_edit_mode": self.settings.value("right_edit_mode", False, type=bool),
         }
 
+        # Storage
+        save_dir = self.prefs.get("save_dir") or "data"
+        self.storage = Storage(Path(save_dir))
+
         # Central panel
         self.central = CalendarPanel(self)
+        self.central.storage = self.storage
+        self.central.rebuild()
         self.setCentralWidget(self.central)
 
         # Left dock (Top month)
@@ -60,6 +76,11 @@ class MainWindow(QMainWindow):
         self.stats_panel = StatsPanel(self.bottom_dock)
         self.bottom_dock.setWidget(self.stats_panel)
         self.addDockWidget(Qt.BottomDockWidgetArea, self.bottom_dock)
+
+        # Load saved data for current month/year
+        self.central.year.valueChanged.connect(self._load_panels)
+        self.central.month.currentIndexChanged.connect(self._load_panels)
+        self._load_panels()
 
         # Status bar: stopwatch (left) and version (right)
         sb = QStatusBar(self)
@@ -109,7 +130,6 @@ class MainWindow(QMainWindow):
         tb.addAction(act_save_dir)
 
     def pick_save_dir(self):
-        from PySide6.QtWidgets import QFileDialog
         d = QFileDialog.getExistingDirectory(self, "Выбрать папку сохранения")
         if d:
             self.prefs["save_dir"] = d
@@ -150,4 +170,59 @@ class MainWindow(QMainWindow):
     def closeEvent(self, e):
         self.settings.setValue("geometry", self.saveGeometry())
         self.settings.setValue("windowState", self.saveState())
+
+        # Persist panel data
+        y = self.central.year.value()
+        m = self.central.month.currentIndex() + 1
+        self.central.save_month()
+        self.storage.save_json(f"{y}/top_month_{m:02d}.json", self._dump_table(self.left_panel.table))
+        self.storage.save_json(f"{y}/postings_{m:02d}.json", self._dump_table(self.right_panel.table))
+        self.storage.save_json(
+            f"{y}/stats_{m:02d}.json",
+            {"charts_visible": self.stats_panel.charts_frame.isVisible()},
+        )
+
         super().closeEvent(e)
+
+    # ------------------------------------------------------------------
+    # helpers for persistence
+    def _dump_table(self, table):
+        data = []
+        rows = table.rowCount()
+        cols = table.columnCount()
+        for r in range(rows):
+            row = []
+            empty = True
+            for c in range(cols):
+                item = table.item(r, c)
+                text = item.text() if item else ""
+                row.append(text)
+                if text:
+                    empty = False
+            if not empty:
+                data.append(row)
+        return data
+
+    def _restore_table(self, table, data):
+        rows = min(len(data), table.rowCount())
+        cols = table.columnCount()
+        for r in range(rows):
+            for c in range(cols):
+                text = data[r][c] if c < len(data[r]) else ""
+                item = table.item(r, c)
+                if not item:
+                    item = QTableWidgetItem()
+                    table.setItem(r, c, item)
+                item.setText(text)
+
+    def _load_panels(self):
+        y = self.central.year.value()
+        m = self.central.month.currentIndex() + 1
+        top = self.storage.load_json(f"{y}/top_month_{m:02d}.json", [])
+        postings = self.storage.load_json(f"{y}/postings_{m:02d}.json", [])
+        stats = self.storage.load_json(f"{y}/stats_{m:02d}.json", {})
+        self._restore_table(self.left_panel.table, top)
+        self._restore_table(self.right_panel.table, postings)
+        vis = bool(stats.get("charts_visible"))
+        self.stats_panel.charts_frame.setVisible(vis)
+        self.stats_panel.toggle_btn.setText("Скрыть графики" if vis else "Показать графики")
