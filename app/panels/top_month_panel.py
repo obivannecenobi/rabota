@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Dict, Optional
+from typing import Dict, Optional, Any
 
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QWidget, QVBoxLayout, QLabel, QTableWidget, QTableWidgetItem
@@ -20,14 +20,22 @@ class TopMonthPanel(QWidget):
 
         lay = QVBoxLayout(self)
         lay.addWidget(QLabel("ТОП месяца"))
-        self.table = QTableWidget(0, 6, self)
+        self.table = QTableWidget(0, 14, self)
         self.table.setHorizontalHeaderLabels([
             "Работа",
+            "Статус",
+            "18+",
             "Главы всего",
+            "Знаки/главу",
+            "Запланировано",
             "Сделано",
+            "Прогресс",
+            "Выпуск",
             "Профит",
+            "Реклама",
             "Просмотры",
             "Лайки",
+            "Спасибо",
         ])
         lay.addWidget(self.table)
 
@@ -68,26 +76,43 @@ class TopMonthPanel(QWidget):
         calendar.load_month(year, month)
 
         # aggregate works from calendar
-        stats: Dict[str, Dict[str, int]] = {}
+        stats: Dict[str, Dict[str, Any]] = {}
         for works in calendar.month_data.values():
             for w in works:
-                info = stats.setdefault(w.name, {"plan": 0, "done": 0})
+                info = stats.setdefault(w.name, {"plan": 0, "done": 0, "adult": False})
                 info["plan"] += w.plan
                 info["done"] += w.done
+                info["adult"] = info["adult"] or getattr(w, "is_adult", False)
 
         # load previously saved metrics
         saved = self.storage.load_json(f"{year}/top_month_{month:02d}.json", {}) or {}
 
         # build table
         self.table.setRowCount(len(stats))
-        for row, (name, info) in enumerate(sorted(stats.items(), key=lambda x: x[1]["done"], reverse=True)):
+        for row, (name, info) in enumerate(
+            sorted(stats.items(), key=lambda x: x[1]["done"], reverse=True)
+        ):
             self._set_item(row, 0, name, editable=False)
-            self._set_item(row, 1, str(info.get("plan", 0)), editable=False)
-            self._set_item(row, 2, str(info.get("done", 0)), editable=False)
             saved_row = saved.get(name, {}) if isinstance(saved, dict) else {}
-            self._set_item(row, 3, str(saved_row.get("profit", "")))
-            self._set_item(row, 4, str(saved_row.get("views", "")))
-            self._set_item(row, 5, str(saved_row.get("likes", "")))
+            self._set_item(row, 1, str(saved_row.get("status", "")))
+            adult_text = "18+" if info.get("adult") else "0+"
+            self._set_item(row, 2, adult_text, editable=False)
+            self._set_item(row, 3, str(saved_row.get("total_chapters", "")))
+            self._set_item(row, 4, str(saved_row.get("symbols_per_chapter", "")))
+            self._set_item(row, 5, str(info.get("plan", 0)), editable=False)
+            self._set_item(row, 6, str(info.get("done", 0)), editable=False)
+            progress = saved_row.get("progress")
+            if progress in (None, ""):
+                plan = info.get("plan", 0)
+                done = info.get("done", 0)
+                progress = f"{int(done / plan * 100)}" if plan else ""
+            self._set_item(row, 7, str(progress))
+            self._set_item(row, 8, str(saved_row.get("release", "")))
+            self._set_item(row, 9, str(saved_row.get("profit", "")))
+            self._set_item(row, 10, str(saved_row.get("ads", "")))
+            self._set_item(row, 11, str(saved_row.get("views", "")))
+            self._set_item(row, 12, str(saved_row.get("likes", "")))
+            self._set_item(row, 13, str(saved_row.get("thanks", "")))
 
         self.set_scale(self.scale_percent)
 
@@ -112,16 +137,37 @@ class TopMonthPanel(QWidget):
             name = name_item.text().strip()
             if not name:
                 continue
-            plan = int(self.table.item(r, 1).text() or 0) if self.table.item(r, 1) else 0
-            done = int(self.table.item(r, 2).text() or 0) if self.table.item(r, 2) else 0
-            profit = self.table.item(r, 3).text() if self.table.item(r, 3) else ""
-            views = self.table.item(r, 4).text() if self.table.item(r, 4) else ""
-            likes = self.table.item(r, 5).text() if self.table.item(r, 5) else ""
+            status = self.table.item(r, 1).text() if self.table.item(r, 1) else ""
+            adult_text = self.table.item(r, 2).text() if self.table.item(r, 2) else "0+"
+            is_adult = adult_text.strip().startswith("18")
+            total_chapters = (
+                int(self.table.item(r, 3).text() or 0) if self.table.item(r, 3) else 0
+            )
+            symbols_per_chapter = (
+                self.table.item(r, 4).text() if self.table.item(r, 4) else ""
+            )
+            plan = int(self.table.item(r, 5).text() or 0) if self.table.item(r, 5) else 0
+            done = int(self.table.item(r, 6).text() or 0) if self.table.item(r, 6) else 0
+            progress = self.table.item(r, 7).text() if self.table.item(r, 7) else ""
+            release = self.table.item(r, 8).text() if self.table.item(r, 8) else ""
+            profit = self.table.item(r, 9).text() if self.table.item(r, 9) else ""
+            ads = self.table.item(r, 10).text() if self.table.item(r, 10) else ""
+            views = self.table.item(r, 11).text() if self.table.item(r, 11) else ""
+            likes = self.table.item(r, 12).text() if self.table.item(r, 12) else ""
+            thanks = self.table.item(r, 13).text() if self.table.item(r, 13) else ""
             data[name] = {
+                "status": status,
+                "is_adult": is_adult,
+                "total_chapters": total_chapters,
+                "symbols_per_chapter": symbols_per_chapter,
                 "plan": plan,
                 "done": done,
+                "progress": progress,
+                "release": release,
                 "profit": profit,
+                "ads": ads,
                 "views": views,
                 "likes": likes,
+                "thanks": thanks,
             }
         return data
