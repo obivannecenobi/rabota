@@ -269,6 +269,7 @@ class MainWindow(QMainWindow):
         scale = self.prefs.get("central_scale", 100)
         self.central.set_scale(scale)
         self.left_panel.set_scale(scale)
+        self.right_panel.set_scale(scale)
         self.central.set_scale_edit_mode(self.prefs.get("scale_edit_mode", False))
         # Panel edit modes
         self.left_panel.set_edit_mode(self.prefs.get("left_edit_mode", False))
