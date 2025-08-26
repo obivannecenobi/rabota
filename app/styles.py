@@ -1,6 +1,11 @@
 from PySide6.QtGui import QColor
 from PySide6.QtWidgets import QGraphicsBlurEffect
 
+# Styles used across the application
+MARK_STYLESHEET_TEMPLATE = "background:{}; border-radius:4px;"
+DAY_PLACEHOLDER_STYLESHEET = "color: gray;"
+ADULT_LABEL_STYLESHEET = "color: red;"
+
 def base_stylesheet(accent: str = "#00E5FF", neon_size: int = 8, neon_intensity: int = 60):
     '''Return a base dark stylesheet with rounded controls and a pseudo-neon focus.'''
     # Neon via shadow-like glow using box-shadow is not native in Qt stylesheets.
