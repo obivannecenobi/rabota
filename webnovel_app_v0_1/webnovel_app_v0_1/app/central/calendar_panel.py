@@ -8,6 +8,13 @@ from PySide6.QtWidgets import (
 )
 
 from ..storage import Storage
+from ..priority_service import (
+    PriorityFilter,
+    color_for,
+    sort_tasks,
+    filter_tasks,
+    override_priority,
+)
 
 
 @dataclass
@@ -15,7 +22,7 @@ class Work:
     name: str
     plan: int = 0
     done: int = 0
-    priority: int = 0
+    priority: int = 1
     is_adult: bool = False
 
     def to_dict(self) -> dict:
@@ -27,7 +34,7 @@ class Work:
             name=data.get("name", ""),
             plan=int(data.get("plan", 0)),
             done=int(data.get("done", 0)),
-            priority=int(data.get("priority", 0)),
+            priority=int(data.get("priority", 1)),
             is_adult=bool(data.get("is_adult", False)),
         )
 
@@ -59,6 +66,7 @@ class CalendarPanel(QWidget):
         self.storage = Storage(Path("data"))
         self.month_data: dict[int, list[Work]] = {}
         self._day_pos: dict[int, tuple[int, int]] = {}
+        self.priority_filter = PriorityFilter.OneToFour
 
         lay = QVBoxLayout(self)
         ctrl = QHBoxLayout()
@@ -129,11 +137,13 @@ class CalendarPanel(QWidget):
         lay.setSpacing(2)
         day_lbl = QLabel(str(day))
         lay.addWidget(day_lbl)
-        for work in sorted(self.month_data.get(day, []), key=lambda x: x.priority, reverse=True):
+        works = self.month_data.get(day, [])
+        works = filter_tasks(works, self.priority_filter)
+        for work in sort_tasks(works):
             hl = QHBoxLayout()
             mark = QFrame()
             mark.setFixedSize(8, 8)
-            mark.setStyleSheet(f"background:{self.priority_color(work.priority)}; border-radius:4px;")
+            mark.setStyleSheet(f"background:{color_for(work.priority)}; border-radius:4px;")
             hl.addWidget(mark)
             lbl = WorkLabel(self, day, work)
             hl.addWidget(lbl)
@@ -142,13 +152,10 @@ class CalendarPanel(QWidget):
         lay.addStretch(1)
         return w
 
-    def priority_color(self, p: int) -> str:
-        return {
-            3: "#ff5555",  # high
-            2: "#ffaa00",  # medium
-            1: "#55aa55",  # low
-            0: "#888888",  # default
-        }.get(p, "#888888")
+    def set_priority_filter(self, filt: PriorityFilter):
+        self.priority_filter = filt
+        for day in list(self.month_data.keys()):
+            self.refresh_day(day)
 
     def edit_work(self, day: int, work: Work):
         plan, ok = QInputDialog.getInt(self, "Plan", "Plan", work.plan, 0, 9999)
@@ -157,6 +164,9 @@ class CalendarPanel(QWidget):
         done, ok = QInputDialog.getInt(self, "Done", "Done", work.done, 0, 9999)
         if ok:
             work.done = done
+        p, ok = QInputDialog.getInt(self, "Приоритет", "Приоритет (1-4)", work.priority, 1, 4)
+        if ok and p != work.priority:
+            override_priority(work, p)
         self.save_month()
         self.refresh_day(day)
 
