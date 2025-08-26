@@ -1,5 +1,40 @@
+from PySide6.QtCore import Qt
 from PySide6.QtGui import QColor
 from PySide6.QtWidgets import QGraphicsBlurEffect
+
+
+class GlassBlurEffect(QGraphicsBlurEffect):
+    """Blur effect with optional texture and sharpness overlays."""
+
+    def __init__(self, texture: int = 0, sharpness: int = 0, parent=None):
+        super().__init__(parent)
+        self._texture = max(0, texture)
+        self._sharpness = max(0, sharpness)
+
+    def setTexture(self, value: int) -> None:
+        self._texture = max(0, value)
+
+    def setSharpness(self, value: int) -> None:
+        self._sharpness = max(0, value)
+
+    def draw(self, painter):  # type: ignore[override]
+        # First let the base class draw the blurred source
+        super().draw(painter)
+
+        rect = self.boundingRect()
+
+        if self._texture:
+            # Overlay a translucent white to emulate frosted texture
+            alpha = max(0, min(255, self._texture))
+            painter.fillRect(rect, QColor(255, 255, 255, alpha))
+
+        if self._sharpness:
+            # Draw a subtle border to give an impression of sharpness
+            pen = painter.pen()
+            pen.setColor(QColor(255, 255, 255, max(0, min(255, self._sharpness))))
+            painter.setPen(pen)
+            painter.setBrush(Qt.NoBrush)
+            painter.drawRect(rect)
 
 # Styles used across the application
 MARK_STYLESHEET_TEMPLATE = "background:{}; border-radius:4px;"
@@ -137,9 +172,10 @@ def apply_glass_effect(window, enabled: bool, opacity: float = 0.9,
     """Apply a simple glass-like effect.
 
     Besides adjusting window opacity, this helper stores the desired blur,
-    texture and sharpness values and applies a ``QGraphicsBlurEffect`` to the
+    texture and sharpness values and applies a ``GlassBlurEffect`` to the
     window.  Parameters are optional; if omitted the values are read from the
-    window's ``prefs`` dictionary when available.
+    window's ``prefs`` dictionary when available.  When the underlying Qt
+    features are unavailable, the effect is safely disabled.
     """
 
     prefs = getattr(window, "prefs", {})
@@ -152,9 +188,15 @@ def apply_glass_effect(window, enabled: bool, opacity: float = 0.9,
 
     if enabled:
         window.setWindowOpacity(opacity)
-        effect = QGraphicsBlurEffect()
-        effect.setBlurRadius(blur)
-        window.setGraphicsEffect(effect)
+        try:
+            effect = GlassBlurEffect(texture=texture, sharpness=sharpness)
+            effect.setBlurRadius(blur)
+            window.setGraphicsEffect(effect)
+        except Exception:
+            # If the effect cannot be created (e.g. missing Qt features),
+            # disable it gracefully
+            window.setWindowOpacity(1.0)
+            window.setGraphicsEffect(None)
     else:
         window.setWindowOpacity(1.0)
         window.setGraphicsEffect(None)
