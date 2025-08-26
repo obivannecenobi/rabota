@@ -93,6 +93,17 @@ class TopMonthPanel(QWidget):
 
     def save_month(self, year: int, month: int):
         """Persist current table values for aggregation."""
+        data = self.collect_month_data()
+        self.storage.save_json(f"{year}/top_month_{month:02d}.json", data)
+        return data
+
+    def collect_month_data(self) -> Dict[str, Dict[str, str]]:
+        """Return current table values as a dictionary.
+
+        The structure mirrors what :meth:`save_month` stores and can be used
+        by aggregation helpers to gather statistics without touching the
+        filesystem.
+        """
         data: Dict[str, Dict[str, str]] = {}
         for r in range(self.table.rowCount()):
             name_item = self.table.item(r, 0)
@@ -113,4 +124,4 @@ class TopMonthPanel(QWidget):
                 "views": views,
                 "likes": likes,
             }
-        self.storage.save_json(f"{year}/top_month_{month:02d}.json", data)
+        return data
