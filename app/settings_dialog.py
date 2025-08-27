@@ -106,12 +106,14 @@ class SettingsDialog(QDialog):
         self.scale_edit_mode = QCheckBox("Редактирование масштаба центральной области")
         self.scale_edit_mode.setChecked(current.get("scale_edit_mode", False))
         self.central_scale = QSpinBox(); self.central_scale.setRange(50, 200); self.central_scale.setValue(current.get("central_scale", 100))
+        self.rows_per_day = QSpinBox(); self.rows_per_day.setRange(1, 20); self.rows_per_day.setValue(current.get("rows_per_day", 6))
         self.left_panel_edit = QCheckBox("Редактирование левой панели (ТОП месяца)")
         self.left_panel_edit.setChecked(current.get("left_edit_mode", False))
         self.right_panel_edit = QCheckBox("Редактирование правой панели (постинг)")
         self.right_panel_edit.setChecked(current.get("right_edit_mode", False))
         scl.addRow(self.scale_edit_mode)
         scl.addRow("Масштаб центральной области (%)", self.central_scale)
+        scl.addRow("Строк на день", self.rows_per_day)
         scl.addRow(self.left_panel_edit)
         scl.addRow(self.right_panel_edit)
 
@@ -190,6 +192,7 @@ class SettingsDialog(QDialog):
             neon_intensity = self.neon_intensity.value(),
             scale_edit_mode = self.scale_edit_mode.isChecked(),
             central_scale = self.central_scale.value(),
+            rows_per_day = self.rows_per_day.value(),
             left_edit_mode = self.left_panel_edit.isChecked(),
             right_edit_mode = self.right_panel_edit.isChecked(),
             priority_filter = self.priority_combo.currentData(),

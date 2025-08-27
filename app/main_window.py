@@ -15,7 +15,7 @@ from PySide6.QtWidgets import (
 from .styles import base_stylesheet, light_stylesheet, apply_glass_effect
 from .settings_dialog import SettingsDialog
 from .version import get_version
-from .central.main_panel import MainPanel
+from .central.daily_grid_panel import DailyGridPanel
 from .panels.top_month_panel import TopMonthPanel
 from .panels.postings_panel import PostingsPanel
 from .panels.stats_panel import StatsPanel
@@ -50,6 +50,7 @@ class MainWindow(QMainWindow):
             "left_edit_mode": self.settings.value("left_edit_mode", False, type=bool),
             "right_edit_mode": self.settings.value("right_edit_mode", False, type=bool),
             "priority_filter": int(self.settings.value("priority_filter", PriorityFilter.OneToFour)),
+            "rows_per_day": int(self.settings.value("rows_per_day", 6)),
         }
 
         # Storage
@@ -57,7 +58,11 @@ class MainWindow(QMainWindow):
         self.storage = Storage(Path(save_dir))
 
         # Central panel
-        self.central = MainPanel(self, storage=self.storage)
+        self.central = DailyGridPanel(
+            self,
+            storage=self.storage,
+            rows_per_day=self.prefs.get("rows_per_day", 6),
+        )
         self.setCentralWidget(self.central)
 
         # Left dock (Top month)
@@ -296,6 +301,7 @@ class MainWindow(QMainWindow):
         self.left_panel.set_scale(scale)
         self.right_panel.set_scale(scale)
         self.stats_panel.set_scale(scale)
+        self.central.set_rows_per_day(self.prefs.get("rows_per_day", 6))
         self.central.set_scale_edit_mode(self.prefs.get("scale_edit_mode", False))
         # Panel edit modes
         self.left_panel.set_edit_mode(self.prefs.get("left_edit_mode", False))
