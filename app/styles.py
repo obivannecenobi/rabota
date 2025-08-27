@@ -45,6 +45,8 @@ def base_stylesheet(accent: str = "#00E5FF", neon_size: int = 8, neon_intensity:
     '''Return a base dark stylesheet with rounded controls and a pseudo-neon focus.'''
     # Neon via shadow-like glow using box-shadow is not native in Qt stylesheets.
     # We emulate with focus ring and accent borders.
+    col = QColor(accent)
+    shadow = f"rgba({col.red()}, {col.green()}, {col.blue()}, {neon_intensity/100})"
     return f"""
     * {{
         font-size: 13px;
@@ -101,12 +103,24 @@ def base_stylesheet(accent: str = "#00E5FF", neon_size: int = 8, neon_intensity:
     }}
     QLineEdit:focus, QSpinBox:focus, QComboBox:focus, QTextEdit:focus, QPlainTextEdit:focus {{
         border: 1px solid {accent};
+        box-shadow: 0 0 {neon_size}px {shadow};
     }}
+    QDockWidget:focus, QFrame:focus, QGroupBox:focus, QTableView:focus,
+    QTableWidget:focus, QListView:focus, QTreeView:focus {
+        border: 1px solid {accent};
+        box-shadow: 0 0 {neon_size}px {shadow};
+    }
+    QDockWidget:hover, QFrame:hover, QGroupBox:hover, QTableView:hover,
+    QTableWidget:hover, QListView:hover, QTreeView:hover {
+        border-color: {accent};
+    }
     """
 
 
 def light_stylesheet(accent: str = "#000000", neon_size: int = 8, neon_intensity: int = 60):
     """Return a simple light stylesheet with white backgrounds and black text."""
+    col = QColor(accent)
+    shadow = f"rgba({col.red()}, {col.green()}, {col.blue()}, {neon_intensity/100})"
     return f"""
     * {{
         font-size: 13px;
@@ -163,7 +177,17 @@ def light_stylesheet(accent: str = "#000000", neon_size: int = 8, neon_intensity
     }}
     QLineEdit:focus, QSpinBox:focus, QComboBox:focus, QTextEdit:focus, QPlainTextEdit:focus {{
         border: 1px solid {accent};
+        box-shadow: 0 0 {neon_size}px {shadow};
     }}
+    QDockWidget:focus, QFrame:focus, QGroupBox:focus, QTableView:focus,
+    QTableWidget:focus, QListView:focus, QTreeView:focus {
+        border: 1px solid {accent};
+        box-shadow: 0 0 {neon_size}px {shadow};
+    }
+    QDockWidget:hover, QFrame:hover, QGroupBox:hover, QTableView:hover,
+    QTableWidget:hover, QListView:hover, QTreeView:hover {
+        border-color: {accent};
+    }
     """
     
 def apply_glass_effect(window, enabled: bool, opacity: float = 0.9,

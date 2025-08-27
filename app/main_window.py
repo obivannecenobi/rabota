@@ -268,18 +268,30 @@ class MainWindow(QMainWindow):
     def apply_prefs(self):
         # Stylesheet / Theme
         if self.prefs.get("theme", "dark") == "dark":
-            self.setStyleSheet(base_stylesheet(
+            sheet = base_stylesheet(
                 accent=self.prefs["accent"],
                 neon_size=self.prefs["neon_size"],
-                neon_intensity=self.prefs["neon_intensity"]
-            ))
+                neon_intensity=self.prefs["neon_intensity"],
+            )
         else:
-            self.setStyleSheet(light_stylesheet(
+            sheet = light_stylesheet(
                 accent=self.prefs["accent"],
                 neon_size=self.prefs["neon_size"],
-                neon_intensity=self.prefs["neon_intensity"]
-            ))
+                neon_intensity=self.prefs["neon_intensity"],
+            )
             self.setPalette(self.style().standardPalette())
+        self.setStyleSheet(sheet)
+        # Re-polish panels so dock contents pick up the accent focus/hover styles
+        for w in (
+            self.central,
+            self.left_panel,
+            self.right_panel,
+            self.stats_panel,
+            self.left_dock,
+            self.right_dock,
+            self.bottom_dock,
+        ):
+            w.setStyleSheet("")
 
         # Glass
         apply_glass_effect(
