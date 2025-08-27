@@ -9,6 +9,9 @@ from PySide6.QtWidgets import (
     QStatusBar,
     QWidget,
     QToolButton,
+    QFrame,
+    QHBoxLayout,
+    QVBoxLayout,
 )
 
 from .styles import base_stylesheet, light_stylesheet, apply_glass_effect
@@ -67,7 +70,6 @@ class MainWindow(QMainWindow):
         # Left dock (Top month)
         self.left_dock = QDockWidget("ТОП месяца", self)
         self.left_dock.setAllowedAreas(Qt.LeftDockWidgetArea)
-        self.left_dock.setTitleBarWidget(QWidget())
         self.left_dock.setFeatures(QDockWidget.NoDockWidgetFeatures)
         self.left_panel = TopMonthPanel(self.left_dock)
         self.left_panel.storage = self.storage
@@ -82,7 +84,6 @@ class MainWindow(QMainWindow):
         # Right dock (Postings)
         self.right_dock = QDockWidget("Постинг отложки по дням", self)
         self.right_dock.setAllowedAreas(Qt.RightDockWidgetArea)
-        self.right_dock.setTitleBarWidget(QWidget())
         self.right_dock.setFeatures(QDockWidget.NoDockWidgetFeatures)
         self.right_panel = PostingsPanel(self.right_dock, storage=self.storage)
         self.right_dock.setWidget(self.right_panel)
@@ -96,7 +97,6 @@ class MainWindow(QMainWindow):
         # Bottom dock (Stats)
         self.bottom_dock = QDockWidget("Результаты / Статистика", self)
         self.bottom_dock.setAllowedAreas(Qt.BottomDockWidgetArea)
-        self.bottom_dock.setTitleBarWidget(QWidget())
         self.bottom_dock.setFeatures(QDockWidget.NoDockWidgetFeatures)
         self.stats_panel = StatsPanel(self.bottom_dock, storage=self.storage)
         self.bottom_dock.setWidget(self.stats_panel)
@@ -107,30 +107,106 @@ class MainWindow(QMainWindow):
         if not self.settings.value("bottom_dock_visible", True, type=bool):
             self.bottom_dock.hide()
 
-        # Toggle buttons for docks
+        # Headers and placeholders for docks
         icon_path = Path(__file__).resolve().parent / "icons" / "menu_vertical.svg"
         icon = QIcon(str(icon_path))
 
-        self.left_btn = QToolButton(self)
-        self.left_btn.setIcon(icon)
-        self.left_btn.setAutoRaise(True)
-        self.left_btn.setFixedSize(24, 24)
-        self.left_btn.setIconSize(QSize(24, 24))
-        self.left_btn.clicked.connect(self.toggle_left_dock)
+        # Left dock header
+        self.left_header = QFrame()
+        lh_layout = QHBoxLayout(self.left_header)
+        lh_layout.setContentsMargins(5, 0, 5, 0)
+        lh_layout.addWidget(QLabel("ТОП месяца"))
+        lh_layout.addStretch()
+        lh_btn = QToolButton(self.left_header)
+        lh_btn.setIcon(icon)
+        lh_btn.setAutoRaise(True)
+        lh_btn.setFixedSize(20, 20)
+        lh_btn.setIconSize(QSize(20, 20))
+        lh_btn.clicked.connect(self.toggle_left_dock)
+        lh_layout.addWidget(lh_btn)
+        self.left_dock.setTitleBarWidget(self.left_header)
 
-        self.right_btn = QToolButton(self)
-        self.right_btn.setIcon(icon)
-        self.right_btn.setAutoRaise(True)
-        self.right_btn.setFixedSize(24, 24)
-        self.right_btn.setIconSize(QSize(24, 24))
-        self.right_btn.clicked.connect(self.toggle_right_dock)
+        # Right dock header
+        self.right_header = QFrame()
+        rh_layout = QHBoxLayout(self.right_header)
+        rh_layout.setContentsMargins(5, 0, 5, 0)
+        rh_layout.addWidget(QLabel("Постинг отложки по дням"))
+        rh_layout.addStretch()
+        rh_btn = QToolButton(self.right_header)
+        rh_btn.setIcon(icon)
+        rh_btn.setAutoRaise(True)
+        rh_btn.setFixedSize(20, 20)
+        rh_btn.setIconSize(QSize(20, 20))
+        rh_btn.clicked.connect(self.toggle_right_dock)
+        rh_layout.addWidget(rh_btn)
+        self.right_dock.setTitleBarWidget(self.right_header)
 
-        self.bottom_btn = QToolButton(self)
-        self.bottom_btn.setIcon(icon)
-        self.bottom_btn.setAutoRaise(True)
-        self.bottom_btn.setFixedSize(24, 24)
-        self.bottom_btn.setIconSize(QSize(24, 24))
-        self.bottom_btn.clicked.connect(self.toggle_bottom_dock)
+        # Bottom dock header
+        self.bottom_header = QFrame()
+        bh_layout = QHBoxLayout(self.bottom_header)
+        bh_layout.setContentsMargins(5, 0, 5, 0)
+        bh_layout.addWidget(QLabel("Результаты / Статистика"))
+        bh_layout.addStretch()
+        bh_btn = QToolButton(self.bottom_header)
+        bh_btn.setIcon(icon)
+        bh_btn.setAutoRaise(True)
+        bh_btn.setFixedSize(20, 20)
+        bh_btn.setIconSize(QSize(20, 20))
+        bh_btn.clicked.connect(self.toggle_bottom_dock)
+        bh_layout.addWidget(bh_btn)
+        self.bottom_dock.setTitleBarWidget(self.bottom_header)
+
+        # Placeholders shown when docks are hidden
+        self.left_placeholder = QFrame(self)
+        self.left_placeholder.setFrameShape(QFrame.StyledPanel)
+        self.left_placeholder.setFixedWidth(20)
+        lp_layout = QVBoxLayout(self.left_placeholder)
+        lp_layout.setContentsMargins(0, 0, 0, 0)
+        lp_layout.addStretch()
+        lp_btn = QToolButton(self.left_placeholder)
+        lp_btn.setIcon(icon)
+        lp_btn.setAutoRaise(True)
+        lp_btn.setFixedSize(20, 20)
+        lp_btn.setIconSize(QSize(20, 20))
+        lp_btn.clicked.connect(self.toggle_left_dock)
+        lp_layout.addWidget(lp_btn)
+        lp_layout.addStretch()
+        self.left_placeholder.hide()
+        self.left_placeholder.mousePressEvent = lambda e: self.toggle_left_dock()
+
+        self.right_placeholder = QFrame(self)
+        self.right_placeholder.setFrameShape(QFrame.StyledPanel)
+        self.right_placeholder.setFixedWidth(20)
+        rp_layout = QVBoxLayout(self.right_placeholder)
+        rp_layout.setContentsMargins(0, 0, 0, 0)
+        rp_layout.addStretch()
+        rp_btn = QToolButton(self.right_placeholder)
+        rp_btn.setIcon(icon)
+        rp_btn.setAutoRaise(True)
+        rp_btn.setFixedSize(20, 20)
+        rp_btn.setIconSize(QSize(20, 20))
+        rp_btn.clicked.connect(self.toggle_right_dock)
+        rp_layout.addWidget(rp_btn)
+        rp_layout.addStretch()
+        self.right_placeholder.hide()
+        self.right_placeholder.mousePressEvent = lambda e: self.toggle_right_dock()
+
+        self.bottom_placeholder = QFrame(self)
+        self.bottom_placeholder.setFrameShape(QFrame.StyledPanel)
+        self.bottom_placeholder.setFixedHeight(20)
+        bp_layout = QHBoxLayout(self.bottom_placeholder)
+        bp_layout.setContentsMargins(0, 0, 0, 0)
+        bp_layout.addStretch()
+        bp_btn = QToolButton(self.bottom_placeholder)
+        bp_btn.setIcon(icon)
+        bp_btn.setAutoRaise(True)
+        bp_btn.setFixedSize(20, 20)
+        bp_btn.setIconSize(QSize(20, 20))
+        bp_btn.clicked.connect(self.toggle_bottom_dock)
+        bp_layout.addWidget(bp_btn)
+        bp_layout.addStretch()
+        self.bottom_placeholder.hide()
+        self.bottom_placeholder.mousePressEvent = lambda e: self.toggle_bottom_dock()
 
         settings_icon_path = (
             Path(__file__).resolve().parent / "icons" / "settings.svg"
@@ -144,9 +220,9 @@ class MainWindow(QMainWindow):
         self.settings_btn.setToolTip("Настройки")
         self.settings_btn.clicked.connect(self.open_settings)
 
-        self.left_dock.visibilityChanged.connect(self._place_toggle_buttons)
-        self.right_dock.visibilityChanged.connect(self._place_toggle_buttons)
-        self.bottom_dock.visibilityChanged.connect(self._place_toggle_buttons)
+        self.left_dock.visibilityChanged.connect(self._place_controls)
+        self.right_dock.visibilityChanged.connect(self._place_controls)
+        self.bottom_dock.visibilityChanged.connect(self._place_controls)
 
         # Load saved data for current month/year
         self.central.year.valueChanged.connect(self._load_panels)
@@ -180,7 +256,7 @@ class MainWindow(QMainWindow):
         if state:
             self.restoreState(state)
 
-        self._place_toggle_buttons()
+        self._place_controls()
 
     def _tick(self):
         self._secs += 1
@@ -208,29 +284,55 @@ class MainWindow(QMainWindow):
         else:
             self.bottom_dock.show()
 
-    def _place_toggle_buttons(self, *args):
+    def _place_controls(self, *args):
         rect = self.rect()
         margin = 5
-        spacing = 5
         self.settings_btn.move(
             rect.right() - self.settings_btn.width() - margin,
             rect.top() + margin,
         )
-        self.right_btn.move(
-            self.settings_btn.x() - self.right_btn.width() - spacing,
-            rect.top() + margin,
-        )
-        self.left_btn.move(rect.left() + margin, rect.top() + margin)
-        self.bottom_btn.move(
-            rect.left() + margin,
-            rect.bottom() - self.bottom_btn.height() - margin,
-        )
-        for btn in (self.left_btn, self.right_btn, self.bottom_btn, self.settings_btn):
-            btn.raise_()
+
+        if not self.left_dock.isVisible():
+            self.left_placeholder.setGeometry(
+                rect.left(), rect.top(), self.left_placeholder.width(), rect.height()
+            )
+            self.left_placeholder.show()
+        else:
+            self.left_placeholder.hide()
+
+        if not self.right_dock.isVisible():
+            self.right_placeholder.setGeometry(
+                rect.right() - self.right_placeholder.width(),
+                rect.top(),
+                self.right_placeholder.width(),
+                rect.height(),
+            )
+            self.right_placeholder.show()
+        else:
+            self.right_placeholder.hide()
+
+        if not self.bottom_dock.isVisible():
+            self.bottom_placeholder.setGeometry(
+                rect.left(),
+                rect.bottom() - self.bottom_placeholder.height(),
+                rect.width(),
+                self.bottom_placeholder.height(),
+            )
+            self.bottom_placeholder.show()
+        else:
+            self.bottom_placeholder.hide()
+
+        for w in (
+            self.left_placeholder,
+            self.right_placeholder,
+            self.bottom_placeholder,
+            self.settings_btn,
+        ):
+            w.raise_()
 
     def resizeEvent(self, e):
         super().resizeEvent(e)
-        self._place_toggle_buttons()
+        self._place_controls()
 
     def set_priority_filter(self, filt: PriorityFilter):
         self.prefs["priority_filter"] = int(filt)
