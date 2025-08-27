@@ -18,7 +18,7 @@ from PySide6.QtWidgets import (
 from ..storage import Storage
 
 if False:  # type checking only
-    from ..central.main_panel import MainPanel
+    from ..central.daily_grid_panel import DailyGridPanel
 
 class TopMonthPanel(QWidget):
     """Panel showing monthly top works with editable statistics."""
@@ -169,7 +169,7 @@ class TopMonthPanel(QWidget):
         else:
             item.setFlags(flags & ~Qt.ItemIsEditable)
 
-    def load_month(self, central: "MainPanel", year: int, month: int):
+    def load_month(self, central: "DailyGridPanel", year: int, month: int):
         """Load stats from MainPanel and stored data for given month."""
         # ensure central data for the month is loaded
         central.load_month(year, month)
