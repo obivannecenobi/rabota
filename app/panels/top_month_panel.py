@@ -12,6 +12,7 @@ from PySide6.QtWidgets import (
     QLineEdit,
     QSpinBox,
     QCheckBox,
+    QPushButton,
 )
 
 from ..storage import Storage
@@ -75,6 +76,8 @@ class TopMonthPanel(QWidget):
         form.addRow("Лайки", self.likes_edit)
         form.addRow("Спасибо", self.thanks_edit)
         lay.addWidget(form_widget)
+        self.add_btn = QPushButton("Добавить", self)
+        lay.addWidget(self.add_btn)
         self.table = QTableWidget(0, 14, self)
         self.table.setHorizontalHeaderLabels([
             "Работа",
@@ -93,6 +96,7 @@ class TopMonthPanel(QWidget):
             "Спасибо",
         ])
         lay.addWidget(self.table)
+        self.add_btn.clicked.connect(self._on_add_clicked)
 
     # ------------------------------------------------------------------
     # scaling / edit mode
@@ -110,6 +114,46 @@ class TopMonthPanel(QWidget):
         self.table.setEditTriggers(trigger)
         # ensure scaling applied when toggling edit mode
         self.set_scale(self.scale_percent)
+
+    # ------------------------------------------------------------------
+    # form handling
+    def _on_add_clicked(self):
+        """Add a new row using form data and persist the month."""
+        data = self.collect_form_data()
+        row = self.table.rowCount()
+        self.table.insertRow(row)
+        self._set_item(row, 0, data.get("work", ""), editable=False)
+        self._set_item(row, 1, data.get("status", ""))
+        adult_text = "18+" if data.get("is_adult") else "0+"
+        self._set_item(row, 2, adult_text, editable=False)
+        self._set_item(row, 3, str(data.get("total_chapters", "")))
+        self._set_item(row, 4, str(data.get("symbols_per_chapter", "")))
+        self._set_item(row, 5, str(data.get("plan", 0)), editable=False)
+        self._set_item(row, 6, str(data.get("done", 0)), editable=False)
+        self._set_item(row, 7, str(data.get("progress", "")))
+        self._set_item(row, 8, str(data.get("release", "")))
+        self._set_item(row, 9, str(data.get("profit", "")))
+        self._set_item(row, 10, str(data.get("ads", "")))
+        self._set_item(row, 11, str(data.get("views", "")))
+        self._set_item(row, 12, str(data.get("likes", "")))
+        self._set_item(row, 13, str(data.get("thanks", "")))
+        self.set_scale(self.scale_percent)
+        self.save_month(data.get("year", 0), data.get("month", 0))
+        # clear form fields except year/month
+        self.work_edit.clear()
+        self.status_edit.clear()
+        self.adult_edit.setChecked(False)
+        self.total_chapters_edit.setValue(0)
+        self.symbols_edit.clear()
+        self.plan_edit.setValue(0)
+        self.done_edit.setValue(0)
+        self.progress_edit.setValue(0)
+        self.release_edit.clear()
+        self.profit_edit.clear()
+        self.ads_edit.clear()
+        self.views_edit.clear()
+        self.likes_edit.clear()
+        self.thanks_edit.clear()
 
     # ------------------------------------------------------------------
     # persistence helpers
