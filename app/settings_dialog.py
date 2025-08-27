@@ -71,6 +71,10 @@ class SettingsDialog(QDialog):
         self.priority_combo.addItem("1-2", PriorityFilter.OneToTwo)
         fl.addRow("Фильтр приоритетов", self.priority_combo)
 
+        self.log_btn = QPushButton("Открыть журнал приоритетов")
+        self.log_btn.clicked.connect(parent.open_priority_log)
+        fl.addRow(self.log_btn)
+
         # Fonts tab
         fonts_tab = QWidget()
         ffl = QFormLayout(fonts_tab)
