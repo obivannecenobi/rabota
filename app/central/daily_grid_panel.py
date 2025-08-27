@@ -3,7 +3,6 @@ from pathlib import Path
 import calendar
 
 from PySide6.QtCore import Qt, Signal
-from PySide6.QtGui import QColor
 from PySide6.QtWidgets import (
     QWidget,
     QVBoxLayout,
@@ -16,7 +15,7 @@ from PySide6.QtWidgets import (
 )
 
 from ..storage import Storage
-from ..priority_service import PriorityFilter, filter_tasks, color_for
+from ..priority_service import PriorityFilter, filter_tasks
 
 
 @dataclass
@@ -48,7 +47,7 @@ class DayCell(QWidget):
 
     changed = Signal()
 
-    HEADERS = ["Работа", "План", "Готово", "Приоритет", "18+", "Комментарий"]
+    HEADERS = ["Работа", "План", "Готово"]
 
     def __init__(self, rows: int, parent: QWidget | None = None):
         super().__init__(parent)
@@ -57,6 +56,13 @@ class DayCell(QWidget):
         lay.setContentsMargins(0, 0, 0, 0)
         self.table = QTableWidget(rows, len(self.HEADERS), self)
         self.table.setHorizontalHeaderLabels(self.HEADERS)
+        # Center and bold headers
+        for c in range(self.table.columnCount()):
+            h = self.table.horizontalHeaderItem(c)
+            h.setTextAlignment(Qt.AlignCenter)
+            f = h.font()
+            f.setBold(True)
+            h.setFont(f)
         self.table.setEditTriggers(
             QTableWidget.DoubleClicked
             | QTableWidget.SelectedClicked
@@ -79,22 +85,17 @@ class DayCell(QWidget):
         return [w for w in self._works if w.name]
 
     def _set_row(self, row: int, work: Work):
-        def set_item(col: int, text: str, checkable: bool = False, checked: bool = False):
+        def set_item(col: int, text: str, align_left: bool = False):
             item = QTableWidgetItem(text)
-            if checkable:
-                item.setFlags(item.flags() | Qt.ItemIsUserCheckable)
-                item.setCheckState(Qt.Checked if checked else Qt.Unchecked)
-                item.setText("")
+            if align_left:
+                item.setTextAlignment(Qt.AlignVCenter | Qt.AlignLeft)
+            else:
+                item.setTextAlignment(Qt.AlignCenter)
             self.table.setItem(row, col, item)
 
-        set_item(0, work.name)
+        set_item(0, work.name, align_left=True)
         set_item(1, str(work.plan))
         set_item(2, str(work.done))
-        pri_item = QTableWidgetItem(str(work.priority))
-        pri_item.setForeground(QColor(color_for(work.priority)))
-        self.table.setItem(row, 3, pri_item)
-        set_item(4, "", checkable=True, checked=work.is_adult)
-        set_item(5, work.comment)
 
     def _on_item_changed(self, item: QTableWidgetItem):
         row = item.row()
@@ -109,12 +110,6 @@ class DayCell(QWidget):
                 work.plan = int(item.text() or 0)
             elif col == 2:
                 work.done = int(item.text() or 0)
-            elif col == 3:
-                work.priority = int(item.text() or 1)
-            elif col == 4:
-                work.is_adult = item.checkState() == Qt.Checked
-            elif col == 5:
-                work.comment = item.text()
         except ValueError:
             pass
         self.changed.emit()
@@ -139,7 +134,7 @@ class DayCell(QWidget):
 
 
 class DailyGridPanel(QWidget):
-    """Panel showing month data in grid form: columns are days (1-31), rows are weeks."""
+    """Panel showing month data in grid form with week numbers and day headers."""
 
     def __init__(
         self,
@@ -156,6 +151,10 @@ class DailyGridPanel(QWidget):
         self.day_widgets: dict[int, DayCell] = {}
 
         lay = QVBoxLayout(self)
+        title = QLabel("План график")
+        title.setAlignment(Qt.AlignCenter)
+        lay.addWidget(title)
+
         ctrl = QHBoxLayout()
         self.year = QSpinBox(self)
         self.year.setRange(2000, 2100)
@@ -185,12 +184,36 @@ class DailyGridPanel(QWidget):
         if self.grid is not None:
             self.grid.deleteLater()
             self.day_widgets.clear()
-        self.grid = QTableWidget(6, 31, self)
-        self.grid.setHorizontalHeaderLabels([str(i) for i in range(1, 32)])
-        self.grid.setVerticalHeaderLabels([str(i) for i in range(1, 7)])
+        # 7 rows (header + 6 weeks) x 32 columns (week + 31 days)
+        self.grid = QTableWidget(7, 32, self)
+        self.grid.horizontalHeader().setVisible(False)
+        self.grid.verticalHeader().setVisible(False)
+        self.grid.setEditTriggers(QTableWidget.NoEditTriggers)
+
+        # Header cell and week numbers
+        header = QTableWidgetItem("Неделя")
+        header.setTextAlignment(Qt.AlignCenter)
+        f = header.font()
+        f.setBold(True)
+        header.setFont(f)
+        header.setFlags(Qt.ItemIsEnabled)
+        self.grid.setItem(0, 0, header)
+        for week in range(1, 7):
+            item = QTableWidgetItem(str(week))
+            item.setTextAlignment(Qt.AlignCenter)
+            item.setFlags(Qt.ItemIsEnabled)
+            self.grid.setItem(week, 0, item)
+
+        # Day header placeholders and day cells
+        for col in range(1, 32):
+            item = QTableWidgetItem("")
+            item.setTextAlignment(Qt.AlignCenter)
+            item.setFlags(Qt.ItemIsEnabled)
+            self.grid.setItem(0, col, item)
+
         for day in range(1, 32):
-            row = (day - 1) // 7
-            col = day - 1
+            row = (day - 1) // 7 + 1
+            col = day
             cell = DayCell(self.rows_per_day, self.grid)
             cell.changed.connect(self.save_month)
             self.grid.setCellWidget(row, col, cell)
@@ -212,7 +235,8 @@ class DailyGridPanel(QWidget):
         for cell in self.day_widgets.values():
             cell.set_scale(self.scale_percent)
         for r in range(self.grid.rowCount()):
-            self.grid.setRowHeight(r, int(self.rows_per_day * 24 * self.scale_percent / 100))
+            base = 24 if r == 0 else self.rows_per_day * 24
+            self.grid.setRowHeight(r, int(base * self.scale_percent / 100))
 
     def set_scale_edit_mode(self, enabled: bool):
         for cell in self.day_widgets.values():
@@ -228,11 +252,20 @@ class DailyGridPanel(QWidget):
         m = self.month.currentIndex() + 1
         self.load_month(y, m)
         days_in_month = calendar.monthrange(y, m)[1]
+        day_names = ["ПН", "ВТ", "СР", "ЧТ", "ПТ", "СБ", "ВС"]
+
         for day in range(1, 32):
+            item = self.grid.item(0, day)
+            if day <= days_in_month:
+                wd = calendar.weekday(y, m, day)
+                item.setText(f"{day_names[wd]} {day}")
+            else:
+                item.setText("")
+            self.grid.setColumnHidden(day, day > days_in_month)
+
             w = self.day_widgets.get(day)
             if not w:
                 continue
-            self.grid.setColumnHidden(day - 1, day > days_in_month)
             works = self.month_data.get(day, []) if day <= days_in_month else []
             w.set_works(works, self.priority_filter)
         self.set_scale(self.scale_percent)
