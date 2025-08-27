@@ -14,6 +14,8 @@ from PySide6.QtWidgets import (
     QDialog,
     QTextEdit,
     QPushButton,
+    QToolButton,
+    QStyle,
 )
 
 from .styles import base_stylesheet, light_stylesheet, apply_glass_effect
@@ -112,6 +114,11 @@ class MainWindow(QMainWindow):
         self.left_panel.storage = self.storage
         self.left_dock.setWidget(self.left_panel)
         self.addDockWidget(Qt.LeftDockWidgetArea, self.left_dock)
+        self.left_dock.visibilityChanged.connect(
+            lambda vis: self.settings.setValue("left_dock_visible", vis)
+        )
+        if not self.settings.value("left_dock_visible", True, type=bool):
+            self.left_dock.hide()
 
         # Right dock (Postings)
         self.right_dock = QDockWidget("Постинг отложки по дням", self)
@@ -176,6 +183,11 @@ class MainWindow(QMainWindow):
         tb = self.addToolBar("Главное")
         tb.setMovable(False)
 
+        self.menu_btn = QToolButton(self)
+        self.menu_btn.setIcon(self.style().standardIcon(QStyle.SP_TitleBarMenuButton))
+        self.menu_btn.clicked.connect(self.toggle_left_dock)
+        tb.addWidget(self.menu_btn)
+
         act_settings = QAction("Настройки", self)
         act_settings.triggered.connect(self.open_settings)
         tb.addAction(act_settings)
@@ -235,6 +247,12 @@ class MainWindow(QMainWindow):
             lambda vis: self.act_show_bottom.setEnabled(not vis)
         )
         self.act_show_bottom.setEnabled(not self.bottom_dock.isVisible())
+
+    def toggle_left_dock(self):
+        if self.left_dock.isVisible():
+            self.left_dock.hide()
+        else:
+            self.left_dock.show()
 
     def open_priority_log(self):
         dlg = PriorityLogDialog(LOG_FILE, self)
@@ -335,6 +353,7 @@ class MainWindow(QMainWindow):
     def closeEvent(self, e):
         self.settings.setValue("geometry", self.saveGeometry())
         self.settings.setValue("windowState", self.saveState())
+        self.settings.setValue("left_dock_visible", self.left_dock.isVisible())
 
         # Persist panel data
         y = self.central.year.value()
