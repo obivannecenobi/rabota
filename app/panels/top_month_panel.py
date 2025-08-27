@@ -18,7 +18,7 @@ from PySide6.QtWidgets import (
 from ..storage import Storage
 
 if False:  # type checking only
-    from ..central.calendar_panel import CalendarPanel
+    from ..central.main_panel import MainPanel
 
 class TopMonthPanel(QWidget):
     """Panel showing monthly top works with editable statistics."""
@@ -169,14 +169,14 @@ class TopMonthPanel(QWidget):
         else:
             item.setFlags(flags & ~Qt.ItemIsEditable)
 
-    def load_month(self, calendar: "CalendarPanel", year: int, month: int):
-        """Load stats from CalendarPanel and stored data for given month."""
-        # ensure calendar data for the month is loaded
-        calendar.load_month(year, month)
+    def load_month(self, central: "MainPanel", year: int, month: int):
+        """Load stats from MainPanel and stored data for given month."""
+        # ensure central data for the month is loaded
+        central.load_month(year, month)
 
-        # aggregate works from calendar
+        # aggregate works from central
         stats: Dict[str, Dict[str, Any]] = {}
-        for works in calendar.month_data.values():
+        for works in central.month_data.values():
             for w in works:
                 info = stats.setdefault(w.name, {"plan": 0, "done": 0, "adult": False})
                 info["plan"] += w.plan
