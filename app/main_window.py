@@ -110,16 +110,22 @@ class MainWindow(QMainWindow):
         self.left_btn = QToolButton(self)
         self.left_btn.setIcon(icon)
         self.left_btn.setAutoRaise(True)
+        self.left_btn.setFixedSize(24, 24)
+        self.left_btn.setIconSize(QSize(24, 24))
         self.left_btn.clicked.connect(self.toggle_left_dock)
 
         self.right_btn = QToolButton(self)
         self.right_btn.setIcon(icon)
         self.right_btn.setAutoRaise(True)
+        self.right_btn.setFixedSize(24, 24)
+        self.right_btn.setIconSize(QSize(24, 24))
         self.right_btn.clicked.connect(self.toggle_right_dock)
 
         self.bottom_btn = QToolButton(self)
         self.bottom_btn.setIcon(icon)
         self.bottom_btn.setAutoRaise(True)
+        self.bottom_btn.setFixedSize(24, 24)
+        self.bottom_btn.setIconSize(QSize(24, 24))
         self.bottom_btn.clicked.connect(self.toggle_bottom_dock)
 
         settings_icon = QIcon.fromTheme(
@@ -129,7 +135,7 @@ class MainWindow(QMainWindow):
         self.settings_btn.setIcon(settings_icon)
         self.settings_btn.setAutoRaise(True)
         self.settings_btn.setFixedSize(24, 24)
-        self.settings_btn.setIconSize(QSize(16, 16))
+        self.settings_btn.setIconSize(QSize(24, 24))
         self.settings_btn.clicked.connect(self.open_settings)
 
         self.left_dock.visibilityChanged.connect(self._place_toggle_buttons)
@@ -197,18 +203,19 @@ class MainWindow(QMainWindow):
             self.bottom_dock.show()
 
     def _place_toggle_buttons(self, *args):
-        geo = self.centralWidget().geometry()
+        rect = self.rect()
         margin = 5
-        self.left_btn.move(geo.left() + margin, geo.top() + margin)
+        self.left_btn.move(rect.left() + margin, rect.top() + margin)
         self.right_btn.move(
-            geo.right() - self.right_btn.width() - margin, geo.top() + margin
+            rect.right() - self.right_btn.width() - margin, rect.top() + margin
         )
         self.bottom_btn.move(
-            geo.left() + margin, geo.bottom() - self.bottom_btn.height() - margin
+            rect.left() + margin,
+            rect.bottom() - self.bottom_btn.height() - margin,
         )
         self.settings_btn.move(
-            self.width() - self.settings_btn.width() - margin,
-            margin,
+            rect.right() - self.settings_btn.width() - margin,
+            rect.top() + margin,
         )
         for btn in (self.left_btn, self.right_btn, self.bottom_btn, self.settings_btn):
             btn.raise_()
