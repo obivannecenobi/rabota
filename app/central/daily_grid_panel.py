@@ -54,6 +54,11 @@ class DayCell(QWidget):
         self.rows_per_day = rows
         lay = QVBoxLayout(self)
         lay.setContentsMargins(0, 0, 0, 0)
+
+        self.caption = QLabel("", self)
+        self.caption.setAlignment(Qt.AlignCenter)
+        lay.addWidget(self.caption)
+
         self.table = QTableWidget(rows, len(self.HEADERS), self)
         self.table.setHorizontalHeaderLabels(self.HEADERS)
         # Center and bold headers
@@ -118,9 +123,14 @@ class DayCell(QWidget):
     def set_scale(self, percent: int):
         f = self.font()
         f.setPointSize(int(12 * percent / 100))
+        self.caption.setFont(f)
         self.table.setFont(f)
+        self.caption.setFixedHeight(int(24 * percent / 100))
         for r in range(self.table.rowCount()):
             self.table.setRowHeight(r, int(24 * percent / 100))
+
+    def set_caption(self, text: str):
+        self.caption.setText(text)
 
     def set_edit_mode(self, enabled: bool):
         trigger = (
@@ -184,40 +194,20 @@ class DailyGridPanel(QWidget):
         if self.grid is not None:
             self.grid.deleteLater()
             self.day_widgets.clear()
-        # 7 rows (header + 6 weeks) x 32 columns (week + 31 days)
-        self.grid = QTableWidget(7, 32, self)
-        self.grid.horizontalHeader().setVisible(False)
+        # 7 rows (header + 6 weeks) x 8 columns (week + 7 days)
+        self.grid = QTableWidget(7, 8, self)
         self.grid.verticalHeader().setVisible(False)
         self.grid.setEditTriggers(QTableWidget.NoEditTriggers)
+        self.grid.setHorizontalHeaderLabels([
+            "Неделя", "ПН", "ВТ", "СР", "ЧТ", "ПТ", "СБ", "ВС"
+        ])
+        self.grid.setRowHidden(0, True)
 
-        # Header cell and week numbers
-        header = QTableWidgetItem("Неделя")
-        header.setTextAlignment(Qt.AlignCenter)
-        f = header.font()
-        f.setBold(True)
-        header.setFont(f)
-        header.setFlags(Qt.ItemIsEnabled)
-        self.grid.setItem(0, 0, header)
         for week in range(1, 7):
             item = QTableWidgetItem(str(week))
             item.setTextAlignment(Qt.AlignCenter)
             item.setFlags(Qt.ItemIsEnabled)
             self.grid.setItem(week, 0, item)
-
-        # Day header placeholders and day cells
-        for col in range(1, 32):
-            item = QTableWidgetItem("")
-            item.setTextAlignment(Qt.AlignCenter)
-            item.setFlags(Qt.ItemIsEnabled)
-            self.grid.setItem(0, col, item)
-
-        for day in range(1, 32):
-            row = (day - 1) // 7 + 1
-            col = day
-            cell = DayCell(self.rows_per_day, self.grid)
-            cell.changed.connect(self.save_month)
-            self.grid.setCellWidget(row, col, cell)
-            self.day_widgets[day] = cell
 
     # --------------------------------------------------------------
     def set_rows_per_day(self, rows: int):
@@ -235,7 +225,7 @@ class DailyGridPanel(QWidget):
         for cell in self.day_widgets.values():
             cell.set_scale(self.scale_percent)
         for r in range(self.grid.rowCount()):
-            base = 24 if r == 0 else self.rows_per_day * 24
+            base = 0 if r == 0 else self.rows_per_day * 24
             self.grid.setRowHeight(r, int(base * self.scale_percent / 100))
 
     def set_scale_edit_mode(self, enabled: bool):
@@ -251,23 +241,35 @@ class DailyGridPanel(QWidget):
         y = self.year.value()
         m = self.month.currentIndex() + 1
         self.load_month(y, m)
-        days_in_month = calendar.monthrange(y, m)[1]
+
+        weeks = calendar.monthcalendar(y, m)
         day_names = ["ПН", "ВТ", "СР", "ЧТ", "ПТ", "СБ", "ВС"]
 
-        for day in range(1, 32):
-            item = self.grid.item(0, day)
-            if day <= days_in_month:
-                wd = calendar.weekday(y, m, day)
-                item.setText(f"{day_names[wd]} {day}")
-            else:
-                item.setText("")
-            self.grid.setColumnHidden(day, day > days_in_month)
+        # Clear previous day widgets
+        for r in range(1, 7):
+            for c in range(1, 8):
+                w = self.grid.cellWidget(r, c)
+                if w:
+                    w.deleteLater()
+                self.grid.setCellWidget(r, c, None)
+        self.day_widgets.clear()
 
-            w = self.day_widgets.get(day)
-            if not w:
-                continue
-            works = self.month_data.get(day, []) if day <= days_in_month else []
-            w.set_works(works, self.priority_filter)
+        # Hide unused week rows
+        for r in range(1, 7):
+            self.grid.setRowHidden(r, r > len(weeks))
+
+        for w_index, week in enumerate(weeks):
+            for d_index, day in enumerate(week):
+                if day == 0:
+                    continue
+                cell = DayCell(self.rows_per_day, self.grid)
+                cell.changed.connect(self.save_month)
+                cell.set_caption(f"{day_names[d_index]} {day}")
+                works = self.month_data.get(day, [])
+                cell.set_works(works, self.priority_filter)
+                self.grid.setCellWidget(w_index + 1, d_index + 1, cell)
+                self.day_widgets[day] = cell
+
         self.set_scale(self.scale_percent)
 
     # --------------------------------------------------------------
