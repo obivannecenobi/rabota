@@ -53,6 +53,9 @@ class TopAggregator:
         raw = self.storage.load_json(f"{year}/top_month_{month:02d}.json", {}) or {}
         result: Dict[str, Stats] = {}
         if isinstance(raw, dict):
+            # new format may store meta information under special key
+            if "__form__" in raw:
+                raw = {k: v for k, v in raw.items() if k != "__form__"}
             for name, info in raw.items():
                 result[name] = Stats(
                     plan=_to_int(info.get("plan")),

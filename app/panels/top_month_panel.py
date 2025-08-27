@@ -2,7 +2,17 @@ from pathlib import Path
 from typing import Dict, Optional, Any
 
 from PySide6.QtCore import Qt
-from PySide6.QtWidgets import QWidget, QVBoxLayout, QLabel, QTableWidget, QTableWidgetItem
+from PySide6.QtWidgets import (
+    QWidget,
+    QVBoxLayout,
+    QLabel,
+    QTableWidget,
+    QTableWidgetItem,
+    QFormLayout,
+    QLineEdit,
+    QSpinBox,
+    QCheckBox,
+)
 
 from ..storage import Storage
 
@@ -20,6 +30,51 @@ class TopMonthPanel(QWidget):
 
         lay = QVBoxLayout(self)
         lay.addWidget(QLabel("ТОП месяца"))
+
+        # ------------------------------------------------------------------
+        # data entry form (meta information + default row values)
+        form_widget = QWidget(self)
+        form = QFormLayout(form_widget)
+        self.year_edit = QSpinBox(form_widget)
+        self.year_edit.setRange(2000, 2100)
+        self.month_edit = QSpinBox(form_widget)
+        self.month_edit.setRange(1, 12)
+        self.work_edit = QLineEdit(form_widget)
+        self.status_edit = QLineEdit(form_widget)
+        self.adult_edit = QCheckBox(form_widget)
+        self.total_chapters_edit = QSpinBox(form_widget)
+        self.total_chapters_edit.setRange(0, 100000)
+        self.symbols_edit = QLineEdit(form_widget)
+        self.plan_edit = QSpinBox(form_widget)
+        self.plan_edit.setRange(0, 100000)
+        self.done_edit = QSpinBox(form_widget)
+        self.done_edit.setRange(0, 100000)
+        self.progress_edit = QSpinBox(form_widget)
+        self.progress_edit.setRange(0, 100)
+        self.release_edit = QLineEdit(form_widget)
+        self.profit_edit = QLineEdit(form_widget)
+        self.ads_edit = QLineEdit(form_widget)
+        self.views_edit = QLineEdit(form_widget)
+        self.likes_edit = QLineEdit(form_widget)
+        self.thanks_edit = QLineEdit(form_widget)
+
+        form.addRow("Год", self.year_edit)
+        form.addRow("Месяц", self.month_edit)
+        form.addRow("Работа", self.work_edit)
+        form.addRow("Статус", self.status_edit)
+        form.addRow("18+", self.adult_edit)
+        form.addRow("Главы всего", self.total_chapters_edit)
+        form.addRow("Знаки/главу", self.symbols_edit)
+        form.addRow("Запланировано", self.plan_edit)
+        form.addRow("Сделано", self.done_edit)
+        form.addRow("Прогресс", self.progress_edit)
+        form.addRow("Выпуск", self.release_edit)
+        form.addRow("Профит", self.profit_edit)
+        form.addRow("Реклама", self.ads_edit)
+        form.addRow("Просмотры", self.views_edit)
+        form.addRow("Лайки", self.likes_edit)
+        form.addRow("Спасибо", self.thanks_edit)
+        lay.addWidget(form_widget)
         self.table = QTableWidget(0, 14, self)
         self.table.setHorizontalHeaderLabels([
             "Работа",
@@ -86,6 +141,29 @@ class TopMonthPanel(QWidget):
 
         # load previously saved metrics
         saved = self.storage.load_json(f"{year}/top_month_{month:02d}.json", {}) or {}
+        saved_form = saved.pop("__form__", {}) if isinstance(saved, dict) else {}
+
+        # populate form from saved values or defaults
+        if saved_form:
+            self.year_edit.setValue(int(saved_form.get("year", year)))
+            self.month_edit.setValue(int(saved_form.get("month", month)))
+            self.work_edit.setText(str(saved_form.get("work", "")))
+            self.status_edit.setText(str(saved_form.get("status", "")))
+            self.adult_edit.setChecked(bool(saved_form.get("is_adult", False)))
+            self.total_chapters_edit.setValue(int(saved_form.get("total_chapters", 0)))
+            self.symbols_edit.setText(str(saved_form.get("symbols_per_chapter", "")))
+            self.plan_edit.setValue(int(saved_form.get("plan", 0)))
+            self.done_edit.setValue(int(saved_form.get("done", 0)))
+            self.progress_edit.setValue(int(saved_form.get("progress", 0)))
+            self.release_edit.setText(str(saved_form.get("release", "")))
+            self.profit_edit.setText(str(saved_form.get("profit", "")))
+            self.ads_edit.setText(str(saved_form.get("ads", "")))
+            self.views_edit.setText(str(saved_form.get("views", "")))
+            self.likes_edit.setText(str(saved_form.get("likes", "")))
+            self.thanks_edit.setText(str(saved_form.get("thanks", "")))
+        else:
+            self.year_edit.setValue(year)
+            self.month_edit.setValue(month)
 
         # build table
         self.table.setRowCount(len(stats))
@@ -119,8 +197,30 @@ class TopMonthPanel(QWidget):
     def save_month(self, year: int, month: int):
         """Persist current table values for aggregation."""
         data = self.collect_month_data()
-        self.storage.save_json(f"{year}/top_month_{month:02d}.json", data)
-        return data
+        payload = {"__form__": self.collect_form_data(), **data}
+        self.storage.save_json(f"{year}/top_month_{month:02d}.json", payload)
+        return payload
+
+    def collect_form_data(self) -> Dict[str, Any]:
+        """Gather current values from the input form."""
+        return {
+            "year": self.year_edit.value(),
+            "month": self.month_edit.value(),
+            "work": self.work_edit.text(),
+            "status": self.status_edit.text(),
+            "is_adult": self.adult_edit.isChecked(),
+            "total_chapters": self.total_chapters_edit.value(),
+            "symbols_per_chapter": self.symbols_edit.text(),
+            "plan": self.plan_edit.value(),
+            "done": self.done_edit.value(),
+            "progress": self.progress_edit.value(),
+            "release": self.release_edit.text(),
+            "profit": self.profit_edit.text(),
+            "ads": self.ads_edit.text(),
+            "views": self.views_edit.text(),
+            "likes": self.likes_edit.text(),
+            "thanks": self.thanks_edit.text(),
+        }
 
     def collect_month_data(self) -> Dict[str, Dict[str, str]]:
         """Return current table values as a dictionary.
