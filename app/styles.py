@@ -106,14 +106,14 @@ def base_stylesheet(accent: str = "#00E5FF", neon_size: int = 8, neon_intensity:
         box-shadow: 0 0 {neon_size}px {shadow};
     }}
     QDockWidget:focus, QFrame:focus, QGroupBox:focus, QTableView:focus,
-    QTableWidget:focus, QListView:focus, QTreeView:focus {
+    QTableWidget:focus, QListView:focus, QTreeView:focus {{
         border: 1px solid {accent};
         box-shadow: 0 0 {neon_size}px {shadow};
-    }
+    }}
     QDockWidget:hover, QFrame:hover, QGroupBox:hover, QTableView:hover,
-    QTableWidget:hover, QListView:hover, QTreeView:hover {
+    QTableWidget:hover, QListView:hover, QTreeView:hover {{
         border-color: {accent};
-    }
+    }}
     """
 
 
@@ -137,10 +137,10 @@ def light_stylesheet(accent: str = "#000000", neon_size: int = 8, neon_intensity
         border: 1px solid #C0C0C0;
         border-radius: 10px;
     }}
-    QDockWidget::title {
+    QDockWidget::title {{
         padding: 2px;
         margin: 0;
-    }
+    }}
 
     QHeaderView::section {{
         background-color: #E0E0E0;
@@ -180,14 +180,14 @@ def light_stylesheet(accent: str = "#000000", neon_size: int = 8, neon_intensity
         box-shadow: 0 0 {neon_size}px {shadow};
     }}
     QDockWidget:focus, QFrame:focus, QGroupBox:focus, QTableView:focus,
-    QTableWidget:focus, QListView:focus, QTreeView:focus {
+    QTableWidget:focus, QListView:focus, QTreeView:focus {{
         border: 1px solid {accent};
         box-shadow: 0 0 {neon_size}px {shadow};
-    }
+    }}
     QDockWidget:hover, QFrame:hover, QGroupBox:hover, QTableView:hover,
-    QTableWidget:hover, QListView:hover, QTreeView:hover {
+    QTableWidget:hover, QListView:hover, QTreeView:hover {{
         border-color: {accent};
-    }
+    }}
     """
     
 def apply_glass_effect(window, enabled: bool, opacity: float = 0.9,
