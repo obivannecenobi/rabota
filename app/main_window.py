@@ -1,7 +1,7 @@
 from pathlib import Path
 
 from PySide6.QtCore import Qt, QTimer, QSettings
-from PySide6.QtGui import QAction, QActionGroup
+from PySide6.QtGui import QAction
 from PySide6.QtWidgets import (
     QMainWindow,
     QDockWidget,
@@ -214,22 +214,6 @@ class MainWindow(QMainWindow):
 
         tb.addSeparator()
 
-        group = QActionGroup(self)
-        self.priority_actions = {}
-        act_all = QAction("1-4", self, checkable=True)
-        act_all.triggered.connect(lambda: self.set_priority_filter(PriorityFilter.OneToFour))
-        group.addAction(act_all)
-        tb.addAction(act_all)
-        self.priority_actions[PriorityFilter.OneToFour] = act_all
-
-        act_low = QAction("1-2", self, checkable=True)
-        act_low.triggered.connect(lambda: self.set_priority_filter(PriorityFilter.OneToTwo))
-        group.addAction(act_low)
-        tb.addAction(act_low)
-        self.priority_actions[PriorityFilter.OneToTwo] = act_low
-
-        tb.addSeparator()
-
         self.palette_combo = QComboBox()
         self.palette_combo.addItem("Циан", "cyan")
         self.palette_combo.addItem("Оранж", "orange")
@@ -273,8 +257,6 @@ class MainWindow(QMainWindow):
         self.prefs["priority_filter"] = int(filt)
         self.settings.setValue("priority_filter", int(filt))
         self.central.set_priority_filter(filt)
-        for pf, act in getattr(self, "priority_actions", {}).items():
-            act.setChecked(pf == filt)
 
     def set_theme(self, theme: str):
         self.prefs["theme"] = theme
@@ -301,7 +283,8 @@ class MainWindow(QMainWindow):
             self.prefs.update(res.__dict__)
             # Persist
             for k, v in res.__dict__.items():
-                self.settings.setValue(k, v)
+                self.settings.setValue(k, int(v) if k == "priority_filter" else v)
+            self.set_priority_filter(res.priority_filter)
             self.apply_prefs()
         dlg.settings_applied.connect(on_apply)
         dlg.exec()
@@ -349,10 +332,6 @@ class MainWindow(QMainWindow):
         # Priority filter
         filt = PriorityFilter(self.prefs.get("priority_filter", PriorityFilter.OneToFour))
         self.central.set_priority_filter(filt)
-        for pf, act in getattr(self, "priority_actions", {}).items():
-            act.blockSignals(True)
-            act.setChecked(pf == filt)
-            act.blockSignals(False)
         # Palette combo state
         if hasattr(self, "palette_combo"):
             idx = self.palette_combo.findData(self.prefs.get("palette", "cyan"))

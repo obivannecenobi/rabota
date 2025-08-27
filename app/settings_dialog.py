@@ -192,7 +192,7 @@ class SettingsDialog(QDialog):
             central_scale = self.central_scale.value(),
             left_edit_mode = self.left_panel_edit.isChecked(),
             right_edit_mode = self.right_panel_edit.isChecked(),
-            priority_filter = int(self.priority_combo.currentData()),
+            priority_filter = self.priority_combo.currentData(),
         )
         self.settings_applied.emit(res)
         self.accept()
