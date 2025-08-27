@@ -1,21 +1,18 @@
 from pathlib import Path
 
 from PySide6.QtCore import Qt, QTimer, QSettings
-from PySide6.QtGui import QAction
+from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import (
     QMainWindow,
     QDockWidget,
     QLabel,
     QStatusBar,
     QWidget,
-    QHBoxLayout,
     QVBoxLayout,
-    QComboBox,
     QDialog,
     QTextEdit,
     QPushButton,
     QToolButton,
-    QStyle,
 )
 
 from .styles import base_stylesheet, light_stylesheet, apply_glass_effect
@@ -28,23 +25,9 @@ from .panels.stats_panel import StatsPanel
 from .storage import Storage
 from .priority_service import (
     PriorityFilter,
-    PRIORITY_COLORS,
-    PRIORITY_DESCRIPTIONS,
     LOG_FILE,
 )
 
-
-class LegendWidget(QWidget):
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        lay = QHBoxLayout(self)
-        lay.setContentsMargins(4, 0, 4, 0)
-        for p, color in PRIORITY_COLORS.items():
-            lbl = QLabel(f"{int(p)} — {PRIORITY_DESCRIPTIONS.get(p, '')}")
-            lbl.setStyleSheet(
-                f"background:{color}; padding:2px; border-radius:3px; color:#000;"
-            )
-            lay.addWidget(lbl)
 
 
 class PriorityLogDialog(QDialog):
@@ -109,7 +92,8 @@ class MainWindow(QMainWindow):
         # Left dock (Top month)
         self.left_dock = QDockWidget("ТОП месяца", self)
         self.left_dock.setAllowedAreas(Qt.LeftDockWidgetArea)
-        self.left_dock.setFeatures(QDockWidget.DockWidgetClosable | QDockWidget.DockWidgetMovable)
+        self.left_dock.setTitleBarWidget(QWidget())
+        self.left_dock.setFeatures(QDockWidget.NoDockWidgetFeatures)
         self.left_panel = TopMonthPanel(self.left_dock)
         self.left_panel.storage = self.storage
         self.left_dock.setWidget(self.left_panel)
@@ -123,7 +107,8 @@ class MainWindow(QMainWindow):
         # Right dock (Postings)
         self.right_dock = QDockWidget("Постинг отложки по дням", self)
         self.right_dock.setAllowedAreas(Qt.RightDockWidgetArea)
-        self.right_dock.setFeatures(QDockWidget.DockWidgetClosable | QDockWidget.DockWidgetMovable)
+        self.right_dock.setTitleBarWidget(QWidget())
+        self.right_dock.setFeatures(QDockWidget.NoDockWidgetFeatures)
         self.right_panel = PostingsPanel(self.right_dock, storage=self.storage)
         self.right_dock.setWidget(self.right_panel)
         self.addDockWidget(Qt.RightDockWidgetArea, self.right_dock)
@@ -136,7 +121,8 @@ class MainWindow(QMainWindow):
         # Bottom dock (Stats)
         self.bottom_dock = QDockWidget("Результаты / Статистика", self)
         self.bottom_dock.setAllowedAreas(Qt.BottomDockWidgetArea)
-        self.bottom_dock.setFeatures(QDockWidget.DockWidgetClosable | QDockWidget.DockWidgetMovable)
+        self.bottom_dock.setTitleBarWidget(QWidget())
+        self.bottom_dock.setFeatures(QDockWidget.NoDockWidgetFeatures)
         self.stats_panel = StatsPanel(self.bottom_dock, storage=self.storage)
         self.bottom_dock.setWidget(self.stats_panel)
         self.addDockWidget(Qt.BottomDockWidgetArea, self.bottom_dock)
@@ -145,6 +131,29 @@ class MainWindow(QMainWindow):
         )
         if not self.settings.value("bottom_dock_visible", True, type=bool):
             self.bottom_dock.hide()
+
+        # Toggle buttons for docks
+        icon_path = Path(__file__).resolve().parent / "icons" / "menu_vertical.svg"
+        icon = QIcon(str(icon_path))
+
+        self.left_btn = QToolButton(self)
+        self.left_btn.setIcon(icon)
+        self.left_btn.setAutoRaise(True)
+        self.left_btn.clicked.connect(self.toggle_left_dock)
+
+        self.right_btn = QToolButton(self)
+        self.right_btn.setIcon(icon)
+        self.right_btn.setAutoRaise(True)
+        self.right_btn.clicked.connect(self.toggle_right_dock)
+
+        self.bottom_btn = QToolButton(self)
+        self.bottom_btn.setIcon(icon)
+        self.bottom_btn.setAutoRaise(True)
+        self.bottom_btn.clicked.connect(self.toggle_bottom_dock)
+
+        self.left_dock.visibilityChanged.connect(self._place_toggle_buttons)
+        self.right_dock.visibilityChanged.connect(self._place_toggle_buttons)
+        self.bottom_dock.visibilityChanged.connect(self._place_toggle_buttons)
 
         # Load saved data for current month/year
         self.central.year.valueChanged.connect(self._load_panels)
@@ -164,9 +173,6 @@ class MainWindow(QMainWindow):
         self.timer.timeout.connect(self._tick)
         self.timer.start(1000)
 
-        # Toolbar/Actions
-        self._build_toolbar()
-
         # Menu
         self.menuBar().hide()
 
@@ -181,6 +187,8 @@ class MainWindow(QMainWindow):
         if state:
             self.restoreState(state)
 
+        self._place_toggle_buttons()
+
     def _tick(self):
         self._secs += 1
         d = self._secs // 86400
@@ -188,48 +196,6 @@ class MainWindow(QMainWindow):
         m = (self._secs % 3600) // 60
         s = self._secs % 60
         self.timer_label.setText(f"{d:02d}:{h:02d}:{m:02d}:{s:02d}")
-
-    def _build_toolbar(self):
-        tb = self.addToolBar("Главное")
-        tb.setMovable(False)
-
-        self.menu_btn = QToolButton(self)
-        self.menu_btn.setIcon(self.style().standardIcon(QStyle.SP_TitleBarMenuButton))
-        self.menu_btn.clicked.connect(self.toggle_left_dock)
-        tb.addWidget(self.menu_btn)
-
-        self.right_btn = QToolButton(self)
-        self.right_btn.setIcon(self.style().standardIcon(QStyle.SP_ArrowRight))
-        self.right_btn.clicked.connect(self.toggle_right_dock)
-        tb.addWidget(self.right_btn)
-
-        self.bottom_btn = QToolButton(self)
-        self.bottom_btn.setIcon(self.style().standardIcon(QStyle.SP_ArrowDown))
-        self.bottom_btn.clicked.connect(self.toggle_bottom_dock)
-        tb.addWidget(self.bottom_btn)
-
-        act_settings = QAction("Настройки", self)
-        act_settings.triggered.connect(self.open_settings)
-        tb.addAction(act_settings)
-
-        tb.addSeparator()
-
-        self.palette_combo = QComboBox()
-        self.palette_combo.addItem("Циан", "cyan")
-        self.palette_combo.addItem("Оранж", "orange")
-        self.palette_combo.addItem("Фиолет", "purple")
-        self.palette_combo.addItem("Свой", "custom")
-        self.palette_combo.currentIndexChanged.connect(
-            lambda idx: self.set_palette(self.palette_combo.itemData(idx))
-        )
-        tb.addWidget(self.palette_combo)
-
-        legend = LegendWidget(self)
-        tb.addWidget(legend)
-
-        act_log = QAction("Журнал", self)
-        act_log.triggered.connect(self.open_priority_log)
-        tb.addAction(act_log)
 
     def toggle_left_dock(self):
         if self.left_dock.isVisible():
@@ -248,6 +214,23 @@ class MainWindow(QMainWindow):
             self.bottom_dock.hide()
         else:
             self.bottom_dock.show()
+
+    def _place_toggle_buttons(self, *args):
+        geo = self.centralWidget().geometry()
+        margin = 5
+        self.left_btn.move(geo.left() + margin, geo.top() + margin)
+        self.right_btn.move(
+            geo.right() - self.right_btn.width() - margin, geo.top() + margin
+        )
+        self.bottom_btn.move(
+            geo.left() + margin, geo.bottom() - self.bottom_btn.height() - margin
+        )
+        for btn in (self.left_btn, self.right_btn, self.bottom_btn):
+            btn.raise_()
+
+    def resizeEvent(self, e):
+        super().resizeEvent(e)
+        self._place_toggle_buttons()
 
     def open_priority_log(self):
         dlg = PriorityLogDialog(LOG_FILE, self)
