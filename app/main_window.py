@@ -127,6 +127,11 @@ class MainWindow(QMainWindow):
         self.right_panel = PostingsPanel(self.right_dock, storage=self.storage)
         self.right_dock.setWidget(self.right_panel)
         self.addDockWidget(Qt.RightDockWidgetArea, self.right_dock)
+        self.right_dock.visibilityChanged.connect(
+            lambda vis: self.settings.setValue("right_dock_visible", vis)
+        )
+        if not self.settings.value("right_dock_visible", True, type=bool):
+            self.right_dock.hide()
 
         # Bottom dock (Stats)
         self.bottom_dock = QDockWidget("Результаты / Статистика", self)
@@ -135,6 +140,11 @@ class MainWindow(QMainWindow):
         self.stats_panel = StatsPanel(self.bottom_dock, storage=self.storage)
         self.bottom_dock.setWidget(self.stats_panel)
         self.addDockWidget(Qt.BottomDockWidgetArea, self.bottom_dock)
+        self.bottom_dock.visibilityChanged.connect(
+            lambda vis: self.settings.setValue("bottom_dock_visible", vis)
+        )
+        if not self.settings.value("bottom_dock_visible", True, type=bool):
+            self.bottom_dock.hide()
 
         # Load saved data for current month/year
         self.central.year.valueChanged.connect(self._load_panels)
@@ -158,7 +168,7 @@ class MainWindow(QMainWindow):
         self._build_toolbar()
 
         # Menu
-        self._build_menu()
+        self.menuBar().hide()
 
         # Apply initial prefs
         self.apply_prefs()
@@ -187,6 +197,16 @@ class MainWindow(QMainWindow):
         self.menu_btn.setIcon(self.style().standardIcon(QStyle.SP_TitleBarMenuButton))
         self.menu_btn.clicked.connect(self.toggle_left_dock)
         tb.addWidget(self.menu_btn)
+
+        self.right_btn = QToolButton(self)
+        self.right_btn.setIcon(self.style().standardIcon(QStyle.SP_ArrowRight))
+        self.right_btn.clicked.connect(self.toggle_right_dock)
+        tb.addWidget(self.right_btn)
+
+        self.bottom_btn = QToolButton(self)
+        self.bottom_btn.setIcon(self.style().standardIcon(QStyle.SP_ArrowDown))
+        self.bottom_btn.clicked.connect(self.toggle_bottom_dock)
+        tb.addWidget(self.bottom_btn)
 
         act_settings = QAction("Настройки", self)
         act_settings.triggered.connect(self.open_settings)
@@ -227,32 +247,23 @@ class MainWindow(QMainWindow):
         act_log.triggered.connect(self.open_priority_log)
         tb.addAction(act_log)
 
-    def _build_menu(self):
-        menu = self.menuBar().addMenu("Вид")
-        self.act_show_left = menu.addAction("Показать левую панель")
-        self.act_show_left.triggered.connect(self.left_dock.show)
-        self.left_dock.visibilityChanged.connect(
-            lambda vis: self.act_show_left.setEnabled(not vis)
-        )
-        self.act_show_left.setEnabled(not self.left_dock.isVisible())
-        self.act_show_right = menu.addAction("Показать правую панель")
-        self.act_show_right.triggered.connect(self.right_dock.show)
-        self.right_dock.visibilityChanged.connect(
-            lambda vis: self.act_show_right.setEnabled(not vis)
-        )
-        self.act_show_right.setEnabled(not self.right_dock.isVisible())
-        self.act_show_bottom = menu.addAction("Показать нижнюю панель")
-        self.act_show_bottom.triggered.connect(self.bottom_dock.show)
-        self.bottom_dock.visibilityChanged.connect(
-            lambda vis: self.act_show_bottom.setEnabled(not vis)
-        )
-        self.act_show_bottom.setEnabled(not self.bottom_dock.isVisible())
-
     def toggle_left_dock(self):
         if self.left_dock.isVisible():
             self.left_dock.hide()
         else:
             self.left_dock.show()
+
+    def toggle_right_dock(self):
+        if self.right_dock.isVisible():
+            self.right_dock.hide()
+        else:
+            self.right_dock.show()
+
+    def toggle_bottom_dock(self):
+        if self.bottom_dock.isVisible():
+            self.bottom_dock.hide()
+        else:
+            self.bottom_dock.show()
 
     def open_priority_log(self):
         dlg = PriorityLogDialog(LOG_FILE, self)
@@ -354,6 +365,8 @@ class MainWindow(QMainWindow):
         self.settings.setValue("geometry", self.saveGeometry())
         self.settings.setValue("windowState", self.saveState())
         self.settings.setValue("left_dock_visible", self.left_dock.isVisible())
+        self.settings.setValue("right_dock_visible", self.right_dock.isVisible())
+        self.settings.setValue("bottom_dock_visible", self.bottom_dock.isVisible())
 
         # Persist panel data
         y = self.central.year.value()
