@@ -8,48 +8,20 @@ from PySide6.QtWidgets import (
     QLabel,
     QStatusBar,
     QWidget,
-    QVBoxLayout,
-    QDialog,
-    QTextEdit,
-    QPushButton,
     QToolButton,
 )
 
 from .styles import base_stylesheet, light_stylesheet, apply_glass_effect
 from .settings_dialog import SettingsDialog
 from .version import get_version
-from .central.calendar_panel import CalendarPanel
+from .central.main_panel import MainPanel
 from .panels.top_month_panel import TopMonthPanel
 from .panels.postings_panel import PostingsPanel
 from .panels.stats_panel import StatsPanel
 from .storage import Storage
-from .priority_service import (
-    PriorityFilter,
-    LOG_FILE,
-)
+from .priority_service import PriorityFilter
 
 
-
-class PriorityLogDialog(QDialog):
-    def __init__(self, log_path: Path, parent=None):
-        super().__init__(parent)
-        self.setWindowTitle("Журнал изменений приоритетов")
-        self.resize(500, 400)
-        layout = QVBoxLayout(self)
-        self.text = QTextEdit(self)
-        self.text.setReadOnly(True)
-        layout.addWidget(self.text)
-        refresh_btn = QPushButton("Обновить", self)
-        refresh_btn.clicked.connect(self.refresh)
-        layout.addWidget(refresh_btn)
-        self.log_path = log_path
-        self.refresh()
-
-    def refresh(self):
-        if self.log_path.exists():
-            self.text.setPlainText(self.log_path.read_text(encoding="utf-8"))
-        else:
-            self.text.setPlainText("Журнал пуст.")
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -84,9 +56,7 @@ class MainWindow(QMainWindow):
         self.storage = Storage(Path(save_dir))
 
         # Central panel
-        self.central = CalendarPanel(self)
-        self.central.storage = self.storage
-        self.central.rebuild()
+        self.central = MainPanel(self, storage=self.storage)
         self.setCentralWidget(self.central)
 
         # Left dock (Top month)
@@ -231,10 +201,6 @@ class MainWindow(QMainWindow):
     def resizeEvent(self, e):
         super().resizeEvent(e)
         self._place_toggle_buttons()
-
-    def open_priority_log(self):
-        dlg = PriorityLogDialog(LOG_FILE, self)
-        dlg.exec()
 
     def set_priority_filter(self, filt: PriorityFilter):
         self.prefs["priority_filter"] = int(filt)
