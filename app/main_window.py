@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from PySide6.QtCore import Qt, QTimer, QSettings
+from PySide6.QtCore import Qt, QTimer, QSettings, QSize
 from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import (
     QMainWindow,
@@ -9,6 +9,7 @@ from PySide6.QtWidgets import (
     QStatusBar,
     QWidget,
     QToolButton,
+    QStyle,
 )
 
 from .styles import base_stylesheet, light_stylesheet, apply_glass_effect
@@ -121,6 +122,16 @@ class MainWindow(QMainWindow):
         self.bottom_btn.setAutoRaise(True)
         self.bottom_btn.clicked.connect(self.toggle_bottom_dock)
 
+        settings_icon = QIcon.fromTheme(
+            "settings", self.style().standardIcon(QStyle.SP_FileDialogDetailedView)
+        )
+        self.settings_btn = QToolButton(self)
+        self.settings_btn.setIcon(settings_icon)
+        self.settings_btn.setAutoRaise(True)
+        self.settings_btn.setFixedSize(24, 24)
+        self.settings_btn.setIconSize(QSize(16, 16))
+        self.settings_btn.clicked.connect(self.open_settings)
+
         self.left_dock.visibilityChanged.connect(self._place_toggle_buttons)
         self.right_dock.visibilityChanged.connect(self._place_toggle_buttons)
         self.bottom_dock.visibilityChanged.connect(self._place_toggle_buttons)
@@ -195,7 +206,11 @@ class MainWindow(QMainWindow):
         self.bottom_btn.move(
             geo.left() + margin, geo.bottom() - self.bottom_btn.height() - margin
         )
-        for btn in (self.left_btn, self.right_btn, self.bottom_btn):
+        self.settings_btn.move(
+            self.width() - self.settings_btn.width() - margin,
+            margin,
+        )
+        for btn in (self.left_btn, self.right_btn, self.bottom_btn, self.settings_btn):
             btn.raise_()
 
     def resizeEvent(self, e):
