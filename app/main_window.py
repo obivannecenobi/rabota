@@ -9,7 +9,6 @@ from PySide6.QtWidgets import (
     QStatusBar,
     QWidget,
     QToolButton,
-    QStyle,
 )
 
 from .styles import base_stylesheet, light_stylesheet, apply_glass_effect
@@ -133,14 +132,16 @@ class MainWindow(QMainWindow):
         self.bottom_btn.setIconSize(QSize(24, 24))
         self.bottom_btn.clicked.connect(self.toggle_bottom_dock)
 
-        settings_icon = QIcon.fromTheme(
-            "settings", self.style().standardIcon(QStyle.SP_FileDialogDetailedView)
+        settings_icon_path = (
+            Path(__file__).resolve().parent / "icons" / "settings.svg"
         )
+        settings_icon = QIcon(str(settings_icon_path))
         self.settings_btn = QToolButton(self)
         self.settings_btn.setIcon(settings_icon)
         self.settings_btn.setAutoRaise(True)
         self.settings_btn.setFixedSize(24, 24)
         self.settings_btn.setIconSize(QSize(24, 24))
+        self.settings_btn.setToolTip("Настройки")
         self.settings_btn.clicked.connect(self.open_settings)
 
         self.left_dock.visibilityChanged.connect(self._place_toggle_buttons)
@@ -210,17 +211,19 @@ class MainWindow(QMainWindow):
     def _place_toggle_buttons(self, *args):
         rect = self.rect()
         margin = 5
-        self.left_btn.move(rect.left() + margin, rect.top() + margin)
-        self.right_btn.move(
-            rect.right() - self.right_btn.width() - margin, rect.top() + margin
-        )
-        self.bottom_btn.move(
-            rect.left() + margin,
-            rect.bottom() - self.bottom_btn.height() - margin,
-        )
+        spacing = 5
         self.settings_btn.move(
             rect.right() - self.settings_btn.width() - margin,
             rect.top() + margin,
+        )
+        self.right_btn.move(
+            self.settings_btn.x() - self.right_btn.width() - spacing,
+            rect.top() + margin,
+        )
+        self.left_btn.move(rect.left() + margin, rect.top() + margin)
+        self.bottom_btn.move(
+            rect.left() + margin,
+            rect.bottom() - self.bottom_btn.height() - margin,
         )
         for btn in (self.left_btn, self.right_btn, self.bottom_btn, self.settings_btn):
             btn.raise_()
